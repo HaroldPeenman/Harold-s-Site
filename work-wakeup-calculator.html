@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Work Wake-Up Calculator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600&family=Outfit:wght@700;800&family=Space+Grotesk:wght@600;700&family=Poppins:wght@600;700&family=Nunito:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #06060f;
+      overflow: hidden;
+      cursor: default;
+      user-select: none;
+    }
+    #root { width: 100%; height: 100%; position: relative; z-index: 1; }
+    #stars {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="stars"></canvas>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useRef, useEffect } = React;
+
+    const MILESTONES = [
+      { label: "Set First Alarm", offsetMin: -100 },
+      { label: "Out of Bed",      offsetMin:  -70 },
+      { label: "Out of Shower",   offsetMin:  -40 },
+      { label: "Out of House",    offsetMin:  -30 },
+      { label: "Start of Shift",  offsetMin:    0 },
+    ];
+
+    // Per-hour config: color, banner border, gradients, glow
+    const SLEEP_CFG = {
+      8: {
+        color: 'hsl(145,72%,52%)',
+        border: 'rgba(42,200,120,0.38)',
+        rightGrad: null,
+        leftGrad:  { rx:95, ry:72, rgb:'42,200,120', a:0.22 },
+        glow: { base:0.17, scale:1.22, dur:3.2, size:68 },
+      },
+      7: {
+        color: 'hsl(137,62%,45%)',
+        border: 'rgba(38,170,100,0.32)',
+        rightGrad: null,
+        leftGrad:  { rx:76, ry:66, rgb:'38,170,100', a:0.17 },
+        glow: { base:0.12, scale:1.18, dur:3.0, size:56 },
+      },
+      6: {
+        color: 'hsl(122,50%,40%)',
+        border: 'rgba(35,145,80,0.24)',
+        rightGrad: null,
+        leftGrad:  { rx:58, ry:60, rgb:'35,145,80',  a:0.13 },
+        glow: { base:0.08, scale:1.14, dur:2.8, size:44 },
+      },
+      5: {
+        color: 'hsl(50,65%,33%)',
+        border: 'rgba(170,148,28,0.32)',
+        rightGrad: { rx:30, ry:55, rgb:'170,148,28', a:0.18 },
+        leftGrad: null, glow: null,
+      },
+      4: {
+        color: 'hsl(30,72%,36%)',
+        border: 'rgba(185,110,28,0.34)',
+        rightGrad: { rx:45, ry:60, rgb:'185,110,28', a:0.24 },
+        leftGrad: null, glow: null,
+      },
+      3: {
+        color: 'hsl(16,76%,38%)',
+        border: 'rgba(185,72,28,0.36)',
+        rightGrad: { rx:60, ry:65, rgb:'185,72,28',  a:0.29 },
+        leftGrad: null, glow: null,
+      },
+      2: {
+        color: 'hsl(5,79%,39%)',
+        border: 'rgba(185,38,28,0.38)',
+        rightGrad: { rx:75, ry:70, rgb:'185,38,28',  a:0.33 },
+        leftGrad: null, glow: null,
+      },
+      1: {
+        color: 'hsl(0,82%,40%)',
+        border: 'rgba(200,28,20,0.42)',
+        rightGrad: { rx:90, ry:75, rgb:'200,28,20',  a:0.38 },
+        leftGrad: null, glow: null,
+      },
+    };
+
+    function getBannerBg(sleepHours) {
+      const cfg = SLEEP_CFG[sleepHours];
+      const base = '#0d0d15';
+      const layers = [];
+      if (cfg.rightGrad) {
+        const { rx, ry, rgb, a } = cfg.rightGrad;
+        layers.push(`radial-gradient(ellipse ${rx}% ${ry}% at 105% 50%, rgba(${rgb},${a}) 0%, transparent 100%)`);
+      }
+      if (cfg.leftGrad) {
+        const { rx, ry, rgb, a } = cfg.leftGrad;
+        layers.push(`radial-gradient(ellipse ${rx}% ${ry}% at -5% 50%, rgba(${rgb},${a}) 0%, transparent 100%)`);
+      }
+      layers.push(base);
+      return layers.join(', ');
+    }
+
+    function addMinutes(base, mins) {
+      const [h, m] = base.split(":").map(Number);
+      const total = h * 60 + m + mins;
+      const hh = Math.floor(((total % 1440) + 1440) % 1440 / 60);
+      const mm = ((total % 1440) + 1440) % 1440 % 60;
+      return `${hh}:${mm.toString().padStart(2, "0")}`;
+    }
+
+    function fmtOffset(mins) {
+      if (mins === 0) return null;
+      const abs = Math.abs(mins);
+      const h = Math.floor(abs / 60);
+      const m = abs % 60;
+      const parts = [];
+      if (h) parts.push(`${h}h`);
+      if (m) parts.push(`${m}m`);
+      return `\u2212${parts.join("\u00a0")}`;
+    }
+
+    function to12(time24) {
+      const [h, m] = time24.split(":").map(Number);
+      const period = h >= 12 ? "PM" : "AM";
+      const h12 = h % 12 || 12;
+      return { h: h12, m: m.toString().padStart(2, "0"), period };
+    }
+
+    function CustomTimeInput({ value, displayValue, onChange, showShine }) {
+      const hiddenRef = useRef(null);
+      const { h, m, period } = to12(displayValue || value || "07:30");
+      const openPicker = () => {
+        const el = hiddenRef.current;
+        if (!el) return;
+        try { el.showPicker(); } catch(e) { el.focus(); }
+      };
+      return (
+        <div className="custom-time-wrap" onClick={openPicker}>
+          {showShine && <div className="border-shine" />}
+          <span className="ctime-nums">{h}:{m}</span>
+          <span className="ctime-period">{period}</span>
+          <input
+            ref={hiddenRef}
+            type="time"
+            value={value}
+            onChange={onChange}
+            style={{ position:'absolute', opacity:0, inset:0, cursor:'pointer', zIndex:1 }}
+          />
+        </div>
+      );
+    }
+
+    function App() {
+      const [clockIn, setClockIn] = useState("07:30");
+      const [sleepHours, setSleepHours] = useState(8);
+      const [displayClockIn, setDisplayClockIn] = useState("00:00");
+      const [showShine, setShowShine] = useState(false);
+
+      // Roll-up animation on mount
+      useEffect(() => {
+        const [tH, tM] = "07:30".split(":").map(Number);
+        const targetMins = tH * 60 + tM; // 450 for 07:30
+        const duration = 2500;
+        const start = performance.now();
+        let rafId;
+        function animate(now) {
+          const elapsed = now - start;
+          const t = Math.min(elapsed / duration, 1);
+          const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+          const cur = Math.round(eased * targetMins);
+          const h = Math.floor(cur / 60) % 24;
+          const m = cur % 60;
+          setDisplayClockIn(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+          if (t < 1) {
+            rafId = requestAnimationFrame(animate);
+          } else {
+            setDisplayClockIn("07:30");
+            setShowShine(true);
+            setTimeout(() => setShowShine(false), 1100);
+          }
+        }
+        rafId = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(rafId);
+      }, []);
+
+      const handleClockInChange = (e) => {
+        if (e.target.value) {
+          setClockIn(e.target.value);
+          setDisplayClockIn(e.target.value);
+        }
+      };
+
+      const milestones = MILESTONES.map((ms) => ({
+        ...ms,
+        time: addMinutes(clockIn, ms.offsetMin),
+      }));
+
+      const lightsOutTime = addMinutes(clockIn, -100 - sleepHours * 60);
+      const cfg = SLEEP_CFG[sleepHours];
+      const trackColor = cfg.color;
+      const bannerBg   = getBannerBg(sleepHours);
+
+      const pct = (sleepHours - 1) / 7;
+      const sliderBg = `linear-gradient(to left, #1a3028 ${Math.round((1-pct)*100)}%, ${trackColor} ${Math.round((1-pct)*100)}%)`;
+
+      const { h: loH, m: loM, period: loPeriod } = to12(lightsOutTime);
+
+      return (
+        <div style={{
+          minHeight:"100vh", background:"transparent",
+          display:"flex", alignItems:"center", justifyContent:"center",
+          fontFamily:"'DM Mono', monospace", padding:"24px",
+        }}>
+          <style>{`
+            * { cursor: default !important; user-select: none !important; }
+            .close-btn         { cursor: pointer !important; }
+            .sleep-slider      { cursor: pointer !important; }
+            .custom-time-wrap  { cursor: pointer !important; }
+            .custom-time-wrap input { cursor: pointer !important; }
+
+            @property --trace-angle {
+              syntax: '<angle>';
+              initial-value: 0deg;
+              inherits: false;
+            }
+            @keyframes border-trace {
+              0%   { --trace-angle: 0deg;   opacity: 1; }
+              68%  { --trace-angle: 292deg; opacity: 1; }
+              100% { --trace-angle: 360deg; opacity: 0; }
+            }
+            .border-shine {
+              position: absolute;
+              inset: -1px;
+              border-radius: 11px;
+              background: conic-gradient(
+                from var(--trace-angle),
+                transparent 0deg,
+                rgba(255,255,255,0.12) 10deg,
+                rgba(255,255,255,0.85) 22deg,
+                rgba(255,255,255,0.95) 28deg,
+                rgba(255,255,255,0.6)  38deg,
+                rgba(255,255,255,0.15) 50deg,
+                transparent 62deg,
+                transparent 360deg
+              );
+              -webkit-mask: linear-gradient(#fff 0 0) content-box,
+                            linear-gradient(#fff 0 0);
+              -webkit-mask-composite: xor;
+              mask-composite: exclude;
+              padding: 1px;
+              pointer-events: none;
+              animation: border-trace 1.05s linear forwards;
+              z-index: 3;
+            }
+
+            @keyframes glow-pulse {
+              0%, 100% { opacity: var(--glow-min, 0.4); transform: scale(1); }
+              50%       { opacity: calc(var(--glow-min, 0.4) * 2.2); transform: scale(var(--glow-scale, 1.2)); }
+            }
+
+            .card {
+              background: #111118;
+              border: 1px solid #1e1e2e;
+              border-radius: 20px;
+              width: 100%;
+              max-width: 380px;
+              overflow: hidden;
+              box-shadow: 0 0 60px rgba(99,102,241,0.08), 0 24px 48px rgba(0,0,0,0.6);
+            }
+            .title-bar {
+              padding: 9px 12px 9px 18px;
+              background: linear-gradient(180deg, #18182a 0%, #131320 100%);
+              border-bottom: 1px solid #2a2a42;
+              display: flex; align-items: center;
+              justify-content: space-between; gap: 8px;
+            }
+            .close-btn {
+              width: 26px; height: 26px; border-radius: 50%;
+              background: transparent; border: 1px solid #4b5563;
+              color: #4b5563; font-size: 13px; line-height: 1;
+              display: flex; align-items: center; justify-content: center;
+              transition: background 0.15s, color 0.15s, border-color 0.15s;
+              flex-shrink: 0;
+            }
+            .close-btn:hover { background: #3a1a1a; border-color: #ef4444; color: #ef4444; }
+            .card-header {
+              padding: 16px 20px 18px 28px;
+              border-bottom: 1px solid #1e1e2e;
+            }
+            .eyebrow {
+              font-family: 'DM Mono', monospace;
+              font-size: 14px; letter-spacing: 0.15em; word-spacing: -0.18em;
+              text-transform: uppercase; color: #7577c8;
+            }
+            .title {
+              font-family: 'Outfit', sans-serif;
+              font-size: 28px; font-weight: 800;
+              color: #f0f0f8; line-height: 1.22;
+              margin: 0; letter-spacing: 0.01em;
+            }
+
+            /* ── Sleep banner ── */
+            .sleep-banner {
+              margin: 0 20px;
+              border-radius: 12px;
+              padding: 15px 17px;
+            }
+            .sleep-top {
+              display: flex; align-items: center;
+              justify-content: space-between; margin-bottom: 11px;
+            }
+            .sleep-top-left { display: flex; align-items: center; gap: 10px; }
+            .sleep-icon { font-size: 22px; line-height: 1; }
+            .sleep-label {
+              font-family: 'DM Mono', monospace;
+              font-size: 19px; font-weight: 500;
+              color: #6ee7b7; letter-spacing: 0.01em;
+            }
+            .sleep-right {
+              display: flex; flex-direction: column;
+              align-items: flex-start; gap: 1px;
+            }
+            .sleep-num-wrap {
+              position: relative; display: inline-block; line-height: 1;
+            }
+            .sleep-glow {
+              position: absolute;
+              border-radius: 50%;
+              background: radial-gradient(circle, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.52) 28%, rgba(255,255,255,0.18) 54%, rgba(255,255,255,0.05) 72%, transparent 86%);
+              pointer-events: none;
+              animation: glow-pulse linear infinite;
+              top: 50%; left: 50%;
+              z-index: 0;
+            }
+            .sleep-hrs-count {
+              font-family: 'Poppins', sans-serif;
+              font-size: 34px; font-weight: 700;
+              line-height: 1; letter-spacing: -0.01em;
+              position: relative; z-index: 1;
+            }
+            .sleep-hrs-unit {
+              font-family: 'DM Mono', monospace;
+              font-size: 12px; font-weight: 600;
+              letter-spacing: 0.08em;
+              color: #5abf92; position: relative; z-index: 1;
+            }
+            .sleep-slider-wrap { padding: 3px 0 0; }
+            .sleep-slider {
+              -webkit-appearance: none; appearance: none;
+              width: 100%; height: 5px; border-radius: 3px;
+              outline: none; transform: scaleX(-1);
+            }
+            .sleep-slider::-webkit-slider-thumb {
+              -webkit-appearance: none; appearance: none;
+              width: 18px; height: 18px; border-radius: 50%;
+              background: #f0f0f8; box-shadow: 0 0 6px rgba(0,0,0,0.4);
+              transition: transform 0.15s;
+            }
+            .sleep-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+            .sleep-slider::-moz-range-thumb {
+              width: 18px; height: 18px; border-radius: 50%;
+              background: #f0f0f8; border: none;
+            }
+            .sleep-divider { height: 1px; background: #1a3028; margin: 11px 0; }
+            .sleep-bottom { display: flex; align-items: center; justify-content: space-between; }
+            .lights-out-label {
+              font-family: 'DM Mono', monospace;
+              font-size: 13px; font-weight: 600;
+              color: #7dbfa0; letter-spacing: 0.05em;
+            }
+            .sleep-time {
+              font-family: 'Nunito', sans-serif;
+              font-size: 26px; font-weight: 600;
+              letter-spacing: 0.01em;
+            }
+            .sleep-time .period {
+              font-family: 'DM Mono', monospace;
+              font-size: 13px; font-weight: 600;
+              margin-left: 3px; letter-spacing: 0.05em; opacity: 0.75;
+            }
+
+            /* ── Timeline rows ── */
+            .rows { padding: 8px 0; }
+            .row {
+              display: flex; align-items: center;
+              padding: 13px 28px; gap: 12px;
+            }
+            .row.is-clockin { background: rgba(99,102,241,0.04); }
+            .row-dot {
+              width: 8px; height: 8px; border-radius: 50%;
+              background: #55557a; border: 1.5px solid #7070a0; flex-shrink: 0;
+            }
+            .row.is-clockin .row-dot {
+              background: #6366f1; border-color: #818cf8;
+              box-shadow: 0 0 8px rgba(99,102,241,0.5);
+            }
+            .row.is-alarm .row-dot {
+              background: #34d399; border-color: #5eedb5;
+              box-shadow: 0 0 8px rgba(52,211,153,0.45);
+            }
+            .row-label {
+              flex: 1; font-family: 'DM Mono', monospace;
+              font-size: 13px; color: #c4cde0; letter-spacing: 0.02em;
+            }
+            .row.is-clockin .row-label { color: #d8e0ff; font-size: 13.5px; font-weight: 700; }
+            .row.is-alarm   .row-label { color: #86efca; font-size: 13.5px; font-weight: 700; }
+            .row-offset {
+              font-family: 'DM Mono', monospace;
+              font-size: 11px; font-weight: 500;
+              color: #6e7a90; min-width: 52px; text-align: right;
+            }
+            .row.is-alarm .row-offset { color: #4aaa7a; }
+            .row-time {
+              font-family: 'Nunito', sans-serif;
+              font-size: 18px; font-weight: 600;
+              color: #e5e7eb; min-width: 82px;
+              text-align: right; letter-spacing: 0.01em;
+            }
+            .row.is-clockin .row-time { color: #a5b4fc; }
+            .row.is-alarm   .row-time { color: #6ee7b7; }
+            .row-time .period {
+              font-family: 'DM Mono', monospace;
+              font-size: 11px; font-weight: 600;
+              color: #6b7280; margin-left: 3px; letter-spacing: 0.04em;
+            }
+            .row.is-clockin .row-time .period { color: #818cf8; }
+            .row.is-alarm   .row-time .period { color: #34d399; }
+
+            /* ── Clock-in section ── */
+            .clock-in-section {
+              padding: 17px 28px;
+              border-top: 1px solid #1e1e2e;
+              display: flex; align-items: center;
+              justify-content: space-between; gap: 12px;
+            }
+            .clock-in-label {
+              font-family: 'DM Mono', monospace;
+              font-size: 12px; font-weight: 600;
+              letter-spacing: 0.13em; text-transform: uppercase;
+              color: #9ca3af;
+            }
+            .custom-time-wrap {
+              background: #1a1a28;
+              border: 1px solid #6366f1; border-radius: 10px;
+              padding: 8px 14px;
+              display: flex; align-items: baseline; gap: 5px;
+              position: relative;
+              transition: box-shadow 0.2s, border-color 0.2s;
+            }
+            .custom-time-wrap:hover {
+              border-color: #818cf8;
+              box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+            }
+            .ctime-nums {
+              font-family: 'Nunito', sans-serif;
+              font-size: 22px; font-weight: 600;
+              color: #f0f0f8; letter-spacing: 0.01em;
+            }
+            .ctime-period {
+              font-family: 'DM Mono', monospace;
+              font-size: 13px; font-weight: 600;
+              color: #9ca3af; letter-spacing: 0.06em;
+            }
+          `}</style>
+
+          <div className="card">
+            <div className="title-bar">
+              <div className="eyebrow">Wake Up Schedule</div>
+              <button className="close-btn" onClick={() => window.close()}>✕</button>
+            </div>
+            <div className="card-header">
+              <h1 className="title">Pre-shift<br/>Timeline</h1>
+            </div>
+
+            {/* Sleep banner */}
+            <div style={{padding:"16px 0 0"}}>
+              <div
+                className="sleep-banner"
+                style={{ background: bannerBg, border: `1px solid ${cfg.border}` }}
+              >
+                <div className="sleep-top">
+                  <div className="sleep-top-left">
+                    <div className="sleep-icon">🌙</div>
+                    <div className="sleep-label">When to Sleep</div>
+                  </div>
+                  <div className="sleep-right">
+                    <div className="sleep-num-wrap">
+                      {cfg.glow && (() => {
+                        const s = cfg.glow.size;
+                        return (
+                          <div
+                            className="sleep-glow"
+                            style={{
+                              width: s, height: s,
+                              marginLeft: -(s/2), marginTop: -(s/2),
+                              animationDuration: `${cfg.glow.dur}s`,
+                              animationTimingFunction: 'ease-in-out',
+                              '--glow-min': cfg.glow.base,
+                              '--glow-scale': cfg.glow.scale,
+                            }}
+                          />
+                        );
+                      })()}
+                      <div className="sleep-hrs-count" style={{color: trackColor}}>{sleepHours}</div>
+                    </div>
+                    <div className="sleep-hrs-unit" style={{color: trackColor}}>hours</div>
+                  </div>
+                </div>
+                <div className="sleep-slider-wrap">
+                  <input
+                    type="range" className="sleep-slider"
+                    min="1" max="8" step="1"
+                    value={sleepHours}
+                    onChange={(e) => setSleepHours(Number(e.target.value))}
+                    style={{background: sliderBg}}
+                  />
+                </div>
+                <div className="sleep-divider" />
+                <div className="sleep-bottom">
+                  <div className="lights-out-label">Lights out by</div>
+                  <div className="sleep-time" style={{color: trackColor}}>
+                    {loH}:{loM}<span className="period">{loPeriod}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Timeline rows */}
+            <div className="rows">
+              {milestones.map((ms) => {
+                const { h, m, period } = to12(ms.time);
+                const isClockIn = ms.offsetMin === 0;
+                const isAlarm   = ms.offsetMin === -100;
+                let cls = "row";
+                if (isClockIn) cls += " is-clockin";
+                if (isAlarm)   cls += " is-alarm";
+                return (
+                  <div key={ms.label} className={cls}>
+                    <div className="row-dot" />
+                    <div className="row-label">{ms.label}</div>
+                    <div className="row-offset">{fmtOffset(ms.offsetMin) ?? ""}</div>
+                    <div className="row-time">
+                      {h}:{m}<span className="period">{period}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Clock-in input */}
+            <div className="clock-in-section">
+              <div className="clock-in-label">Clock-In Time</div>
+              <CustomTimeInput
+                value={clockIn}
+                displayValue={displayClockIn}
+                showShine={showShine}
+                onChange={handleClockInChange}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+
+  <script>
+    // ── Starfield ──────────────────────────────────────────
+    const canvas = document.getElementById("stars");
+    const ctx    = canvas.getContext("2d");
+
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    resize();
+    window.addEventListener("resize", resize);
+
+    function rand(a, b) { return a + Math.random() * (b - a); }
+
+    const STAR_COUNT  = 200;
+    const DRIFT_PX    = 0.055; // px per frame rightward (very slow)
+
+    const stars = Array.from({ length: STAR_COUNT }, () => ({
+      x:    rand(0, 1),         // normalized 0-1
+      y:    rand(0, 1),
+      size: rand(0.35, 1.7),    // base radius px
+      alpha: rand(0.3, 0.82),   // base brightness
+      twinkle: null,            // { t, dur, hasRays } | null
+      nextTwinkle: rand(80, 650),
+    }));
+
+    function drawStar(s) {
+      const x = s.x * canvas.width;
+      const y = s.y * canvas.height;
+      let alpha  = s.alpha;
+      let radius = s.size;
+      let rayLen = 0;
+
+      if (s.twinkle) {
+        const bell = Math.sin((s.twinkle.t / s.twinkle.dur) * Math.PI); // 0→1→0
+        alpha  = s.alpha + bell * (1 - s.alpha) * 0.88;
+        radius = s.size  + bell * s.size * 0.55;
+        if (s.twinkle.hasRays) rayLen = bell * 4.5;
+      }
+
+      ctx.save();
+      ctx.globalAlpha = Math.min(alpha, 1);
+      ctx.fillStyle   = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (rayLen > 0.4) {
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth   = 0.55;
+        ctx.globalAlpha = Math.min(alpha * 0.55, 1);
+        for (let i = 0; i < 4; i++) {
+          const ang = (i / 4) * Math.PI * 2;
+          const cos = Math.cos(ang), sin = Math.sin(ang);
+          ctx.beginPath();
+          ctx.moveTo(x + cos * radius, y + sin * radius);
+          ctx.lineTo(x + cos * (radius + rayLen), y + sin * (radius + rayLen));
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
+    function tick() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (const s of stars) {
+        // drift right, seamless wrap
+        s.x += DRIFT_PX / canvas.width;
+        if (s.x > 1) s.x -= 1;
+
+        // twinkle state machine
+        if (s.twinkle) {
+          s.twinkle.t++;
+          if (s.twinkle.t >= s.twinkle.dur) {
+            s.twinkle = null;
+            s.nextTwinkle = rand(100, 700);
+          }
+        } else {
+          s.nextTwinkle--;
+          if (s.nextTwinkle <= 0) {
+            s.twinkle = {
+              t: 0,
+              dur: Math.round(rand(45, 95)),
+              hasRays: Math.random() < 0.32,
+            };
+          }
+        }
+
+        drawStar(s);
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    tick();
+  </script>
+</body>
+</html>
