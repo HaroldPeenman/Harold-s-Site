@@ -201,10 +201,13 @@
       const handleDownload = async () => {
         const zone = document.getElementById('capture-zone');
         if (!zone || !window.html2canvas) return;
+        const glows = zone.querySelectorAll('.sleep-glow');
+        glows.forEach(g => g.style.opacity = '0');
         const canvas = await window.html2canvas(zone, {
           backgroundColor: '#111118', scale: 2, logging: false,
           useCORS: true,
         });
+        glows.forEach(g => g.style.opacity = '');
         canvas.toBlob(async (blob) => {
           const file = new File([blob], 'wake-up-schedule.png', { type: 'image/png' });
           if (navigator.canShare && navigator.canShare({ files: [file] })) {

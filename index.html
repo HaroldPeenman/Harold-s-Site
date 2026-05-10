@@ -30,12 +30,12 @@
 
     /* ── Card ─────────────────────────────────────────────── */
     .card {
-      background: #111118;
+      background: #150d0d;
       border: 1px solid #2e1e1e;
       border-radius: 20px;
       width: 100%; max-width: 420px;
       overflow: hidden;
-      box-shadow: 0 0 60px rgba(220,70,70,0.07), 0 24px 48px rgba(0,0,0,0.6);
+      box-shadow: 0 0 60px rgba(200,68,68,0.08), 0 24px 48px rgba(0,0,0,0.6);
     }
 
     /* ── Title bar ────────────────────────────────────────── */
@@ -50,65 +50,30 @@
       font-size: 14px; font-weight: 600;
       letter-spacing: 0.15em; word-spacing: -0.18em;
       text-transform: uppercase;
-      color: #c84444;
+      color: #c87070;
     }
 
-    /* ── Card header ──────────────────────────────────────── */
-    .card-header {
-      padding: 22px 28px 20px;
-      border-bottom: 1px solid #2e1e1e;
+    /* ── Project button ───────────────────────────────────── */
+    .project-btn-wrap {
+      padding: 28px 28px;
+      display: flex; justify-content: center;
     }
-    .site-title {
-      font-family: 'Outfit', sans-serif;
-      font-size: 36px; font-weight: 800;
-      color: #f0f0f8; line-height: 1.15;
-      letter-spacing: 0.01em;
-    }
-    .site-subtitle {
-      font-family: 'DM Mono', monospace;
-      font-size: 12px; color: #4b5060;
-      margin-top: 6px; letter-spacing: 0.06em;
-    }
-
-    /* ── Section ──────────────────────────────────────────── */
-    .section {
-      padding: 6px 0 10px;
-    }
-    .section-label {
-      font-family: 'DM Mono', monospace;
-      font-size: 10px; font-weight: 600;
-      letter-spacing: 0.22em; text-transform: uppercase;
-      color: #3e3044;
-      padding: 12px 28px 6px;
-    }
-
-    /* ── Project row ──────────────────────────────────────── */
-    .project-link {
-      display: flex; align-items: center;
-      padding: 14px 28px; gap: 14px;
+    .project-btn {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 13px 28px;
+      background: #1c0f0f;
+      border: 1px solid #6a2f2f;
+      border-radius: 50px;
       text-decoration: none;
-      transition: background 0.15s;
-    }
-    .project-link:hover { background: rgba(220,70,70,0.05); }
-    .project-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: #c84444; border: 1.5px solid #e06060;
-      box-shadow: 0 0 8px rgba(200,68,68,0.5);
-      flex-shrink: 0;
-    }
-    .project-name {
-      flex: 1;
       font-family: 'DM Mono', monospace;
       font-size: 14px; font-weight: 600;
-      color: #d0cce8; letter-spacing: 0.02em;
+      color: #c4a0a0; letter-spacing: 0.04em;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
     }
-    .project-arrow {
-      font-size: 14px; color: #3e2e2e;
-      transition: color 0.15s, transform 0.15s;
-    }
-    .project-link:hover .project-arrow {
-      color: #c84444;
-      transform: translateX(3px);
+    .project-btn:hover {
+      background: #2a1515;
+      border-color: #c84444;
+      color: #f0d0d0;
     }
   </style>
 </head>
@@ -119,16 +84,9 @@
       <div class="title-bar">
         <div class="eyebrow">Harold's Site</div>
       </div>
-      <div class="card-header">
-        <h1 class="site-title">Harold's<br/>Site</h1>
-        <div class="site-subtitle">A collection of small projects</div>
-      </div>
-      <div class="section">
-        <div class="section-label">Stuff</div>
-        <a class="project-link" href="wakeup-calculator/index.html">
-          <div class="project-dot"></div>
-          <div class="project-name">Wake-Up Calculator</div>
-          <div class="project-arrow">→</div>
+      <div class="project-btn-wrap">
+        <a class="project-btn" href="wakeup-calculator/index.html">
+          🌙 Wake-Up Calculator
         </a>
       </div>
     </div>
