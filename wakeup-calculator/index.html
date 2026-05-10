@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Work Wake-Up Calculator</title>
+  <title>Wake-Up Calculator</title>
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600&family=Outfit:wght@700;800&family=Space+Grotesk:wght@600;700&family=Poppins:wght@600;700&family=Nunito:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
@@ -197,6 +198,24 @@
         return () => cancelAnimationFrame(rafId);
       }, []);
 
+      const handleDownload = async () => {
+        const zone = document.getElementById('capture-zone');
+        if (!zone || !window.html2canvas) return;
+        const canvas = await window.html2canvas(zone, {
+          backgroundColor: '#111118', scale: 2, logging: false,
+          useCORS: true,
+        });
+        canvas.toBlob(async (blob) => {
+          const file = new File([blob], 'wake-up-schedule.png', { type: 'image/png' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try { await navigator.share({ files: [file], title: 'Wake-Up Schedule' }); return; }
+            catch(e) { if (e.name === 'AbortError') return; }
+          }
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank');
+        }, 'image/png');
+      };
+
       const handleClockInChange = (e) => {
         if (e.target.value) {
           setClockIn(e.target.value);
@@ -294,9 +313,10 @@
               color: #4b5563; font-size: 13px; line-height: 1;
               display: flex; align-items: center; justify-content: center;
               transition: background 0.15s, color 0.15s, border-color 0.15s;
-              flex-shrink: 0;
+              flex-shrink: 0; text-decoration: none;
             }
-            .close-btn:hover { background: #3a1a1a; border-color: #ef4444; color: #ef4444; }
+            .home-btn:hover { background: #1a1a3a; border-color: #6366f1; color: #818cf8; }
+            .dl-btn:hover   { background: #0f2a1f; border-color: #34d399; color: #34d399; }
             .card-header {
               padding: 16px 20px 18px 28px;
               border-bottom: 1px solid #1e1e2e;
@@ -317,22 +337,45 @@
             .sleep-banner {
               margin: 0 20px;
               border-radius: 12px;
-              padding: 15px 17px;
+              padding: 14px 17px 16px;
             }
             .sleep-top {
               display: flex; align-items: center;
-              justify-content: space-between; margin-bottom: 11px;
+              gap: 10px; margin-bottom: 10px;
             }
-            .sleep-top-left { display: flex; align-items: center; gap: 10px; }
             .sleep-icon { font-size: 22px; line-height: 1; }
             .sleep-label {
               font-family: 'DM Mono', monospace;
               font-size: 19px; font-weight: 500;
               color: #6ee7b7; letter-spacing: 0.01em;
             }
-            .sleep-right {
-              display: flex; flex-direction: column;
-              align-items: flex-start; gap: 1px;
+            .sleep-content {
+              display: grid;
+              grid-template-columns: 1fr auto;
+              grid-template-areas: "label right" "time right";
+              column-gap: 16px; row-gap: 5px;
+              margin-top: 12px;
+            }
+            .lights-out-label {
+              grid-area: label; align-self: end;
+              font-family: 'DM Mono', monospace;
+              font-size: 13px; font-weight: 600;
+              color: #7dbfa0; letter-spacing: 0.05em;
+            }
+            .sleep-time-wrapper { grid-area: time; align-self: start; }
+            .sleep-time {
+              font-family: 'Nunito', sans-serif;
+              font-size: 21px; font-weight: 600;
+              letter-spacing: 0.01em;
+            }
+            .sleep-time .period {
+              font-family: 'DM Mono', monospace;
+              font-size: 12px; font-weight: 600;
+              margin-left: 2px; letter-spacing: 0.05em; opacity: 0.75;
+            }
+            .sleep-right-col {
+              grid-area: right; align-self: center;
+              display: flex; align-items: center; gap: 8px;
             }
             .sleep-num-wrap {
               position: relative; display: inline-block; line-height: 1;
@@ -352,13 +395,17 @@
               line-height: 1; letter-spacing: -0.01em;
               position: relative; z-index: 1;
             }
-            .sleep-hrs-unit {
+            .sleep-hrs-labels {
+              display: flex; flex-direction: column; gap: 2px;
+              padding-top: 2px;
+            }
+            .sleep-hrs-unit, .sleep-hrs-of {
               font-family: 'DM Mono', monospace;
               font-size: 12px; font-weight: 600;
               letter-spacing: 0.08em;
-              color: #5abf92; position: relative; z-index: 1;
+              position: relative; z-index: 1;
             }
-            .sleep-slider-wrap { padding: 3px 0 0; }
+            .sleep-slider-wrap { padding: 2px 0 0; }
             .sleep-slider {
               -webkit-appearance: none; appearance: none;
               width: 100%; height: 5px; border-radius: 3px;
@@ -374,23 +421,6 @@
             .sleep-slider::-moz-range-thumb {
               width: 18px; height: 18px; border-radius: 50%;
               background: #f0f0f8; border: none;
-            }
-            .sleep-divider { height: 1px; background: #1a3028; margin: 11px 0; }
-            .sleep-bottom { display: flex; align-items: center; justify-content: space-between; }
-            .lights-out-label {
-              font-family: 'DM Mono', monospace;
-              font-size: 13px; font-weight: 600;
-              color: #7dbfa0; letter-spacing: 0.05em;
-            }
-            .sleep-time {
-              font-family: 'Nunito', sans-serif;
-              font-size: 26px; font-weight: 600;
-              letter-spacing: 0.01em;
-            }
-            .sleep-time .period {
-              font-family: 'DM Mono', monospace;
-              font-size: 13px; font-weight: 600;
-              margin-left: 3px; letter-spacing: 0.05em; opacity: 0.75;
             }
 
             /* ── Timeline rows ── */
@@ -479,25 +509,58 @@
 
           <div className="card">
             <div className="title-bar">
-              <div className="eyebrow">Wake Up Schedule</div>
-              <button className="close-btn" onClick={() => window.close()}>✕</button>
+              <a href="../index.html" className="close-btn home-btn" title="Home">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <polyline points="1,7.5 7,1.5 13,7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M3 6V12.5H5.8V9H8.2V12.5H11V6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </a>
+              <div className="eyebrow">Wake-Up Schedule</div>
+              <button className="close-btn dl-btn" onClick={handleDownload} title="Save image">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M7 1.5V9.5M7 9.5L4.5 7M7 9.5L9.5 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M1.5 12H12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </button>
             </div>
             <div className="card-header">
               <h1 className="title">Pre-shift<br/>Timeline</h1>
             </div>
 
+            {/* Capture zone: sleep banner + rows */}
+            <div id="capture-zone">
             {/* Sleep banner */}
             <div style={{padding:"16px 0 0"}}>
               <div
                 className="sleep-banner"
                 style={{ background: bannerBg, border: `1px solid ${cfg.border}` }}
               >
+                {/* Title row */}
                 <div className="sleep-top">
-                  <div className="sleep-top-left">
-                    <div className="sleep-icon">🌙</div>
-                    <div className="sleep-label">When to Sleep</div>
+                  <div className="sleep-icon">🌙</div>
+                  <div className="sleep-label">When to Sleep</div>
+                </div>
+
+                {/* Slider — between title and content */}
+                <div className="sleep-slider-wrap">
+                  <input
+                    type="range" className="sleep-slider"
+                    min="1" max="8" step="1"
+                    value={sleepHours}
+                    onChange={(e) => setSleepHours(Number(e.target.value))}
+                    style={{background: sliderBg}}
+                  />
+                </div>
+
+                {/* Two-column content */}
+                <div className="sleep-content">
+                  <div className="lights-out-label">Lights out by</div>
+                  <div className="sleep-time-wrapper">
+                    <div className="sleep-time" style={{color: trackColor}}>
+                      {loH}:{loM}<span className="period">{loPeriod}</span>
+                    </div>
                   </div>
-                  <div className="sleep-right">
+                  <div className="sleep-right-col">
                     <div className="sleep-num-wrap">
                       {cfg.glow && (() => {
                         const s = cfg.glow.size;
@@ -517,23 +580,10 @@
                       })()}
                       <div className="sleep-hrs-count" style={{color: trackColor}}>{sleepHours}</div>
                     </div>
-                    <div className="sleep-hrs-unit" style={{color: trackColor}}>hours</div>
-                  </div>
-                </div>
-                <div className="sleep-slider-wrap">
-                  <input
-                    type="range" className="sleep-slider"
-                    min="1" max="8" step="1"
-                    value={sleepHours}
-                    onChange={(e) => setSleepHours(Number(e.target.value))}
-                    style={{background: sliderBg}}
-                  />
-                </div>
-                <div className="sleep-divider" />
-                <div className="sleep-bottom">
-                  <div className="lights-out-label">Lights out by</div>
-                  <div className="sleep-time" style={{color: trackColor}}>
-                    {loH}:{loM}<span className="period">{loPeriod}</span>
+                    <div className="sleep-hrs-labels">
+                      <div className="sleep-hrs-unit" style={{color: trackColor}}>hours</div>
+                      <div className="sleep-hrs-of"   style={{color: trackColor}}>of sleep</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -560,6 +610,7 @@
                 );
               })}
             </div>
+            </div>{/* end capture-zone */}
 
             {/* Clock-in input */}
             <div className="clock-in-section">

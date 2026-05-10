@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Harold's Site</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600&family=Outfit:wght@700;800&family=Nunito:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; min-height: 100%;
+      background: #06060f;
+      font-family: 'DM Mono', monospace;
+      cursor: default;
+      user-select: none;
+    }
+    #stars {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0; pointer-events: none;
+    }
+    #content {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 32px 24px;
+    }
+
+    /* ── Card ─────────────────────────────────────────────── */
+    .card {
+      background: #111118;
+      border: 1px solid #2e1e1e;
+      border-radius: 20px;
+      width: 100%; max-width: 420px;
+      overflow: hidden;
+      box-shadow: 0 0 60px rgba(220,70,70,0.07), 0 24px 48px rgba(0,0,0,0.6);
+    }
+
+    /* ── Title bar ────────────────────────────────────────── */
+    .title-bar {
+      padding: 9px 18px;
+      background: linear-gradient(180deg, #1e1212 0%, #161010 100%);
+      border-bottom: 1px solid #3a2020;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .eyebrow {
+      font-family: 'DM Mono', monospace;
+      font-size: 14px; font-weight: 600;
+      letter-spacing: 0.15em; word-spacing: -0.18em;
+      text-transform: uppercase;
+      color: #c84444;
+    }
+
+    /* ── Card header ──────────────────────────────────────── */
+    .card-header {
+      padding: 22px 28px 20px;
+      border-bottom: 1px solid #2e1e1e;
+    }
+    .site-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 36px; font-weight: 800;
+      color: #f0f0f8; line-height: 1.15;
+      letter-spacing: 0.01em;
+    }
+    .site-subtitle {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px; color: #4b5060;
+      margin-top: 6px; letter-spacing: 0.06em;
+    }
+
+    /* ── Section ──────────────────────────────────────────── */
+    .section {
+      padding: 6px 0 10px;
+    }
+    .section-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: #3e3044;
+      padding: 12px 28px 6px;
+    }
+
+    /* ── Project row ──────────────────────────────────────── */
+    .project-link {
+      display: flex; align-items: center;
+      padding: 14px 28px; gap: 14px;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .project-link:hover { background: rgba(220,70,70,0.05); }
+    .project-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #c84444; border: 1.5px solid #e06060;
+      box-shadow: 0 0 8px rgba(200,68,68,0.5);
+      flex-shrink: 0;
+    }
+    .project-name {
+      flex: 1;
+      font-family: 'DM Mono', monospace;
+      font-size: 14px; font-weight: 600;
+      color: #d0cce8; letter-spacing: 0.02em;
+    }
+    .project-arrow {
+      font-size: 14px; color: #3e2e2e;
+      transition: color 0.15s, transform 0.15s;
+    }
+    .project-link:hover .project-arrow {
+      color: #c84444;
+      transform: translateX(3px);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="stars"></canvas>
+  <div id="content">
+    <div class="card">
+      <div class="title-bar">
+        <div class="eyebrow">Harold's Site</div>
+      </div>
+      <div class="card-header">
+        <h1 class="site-title">Harold's<br/>Site</h1>
+        <div class="site-subtitle">A collection of small projects</div>
+      </div>
+      <div class="section">
+        <div class="section-label">Stuff</div>
+        <a class="project-link" href="wakeup-calculator/index.html">
+          <div class="project-dot"></div>
+          <div class="project-name">Wake-Up Calculator</div>
+          <div class="project-arrow">→</div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Starfield (identical to calculator) ────────────────
+    const canvas = document.getElementById("stars");
+    const ctx    = canvas.getContext("2d");
+
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    resize();
+    window.addEventListener("resize", resize);
+
+    function rand(a, b) { return a + Math.random() * (b - a); }
+
+    const STAR_COUNT = 200;
+    const DRIFT_PX   = 0.055;
+
+    const stars = Array.from({ length: STAR_COUNT }, () => ({
+      x:    rand(0, 1),
+      y:    rand(0, 1),
+      size: rand(0.35, 1.7),
+      alpha: rand(0.3, 0.82),
+      twinkle: null,
+      nextTwinkle: rand(80, 650),
+    }));
+
+    function drawStar(s) {
+      const x = s.x * canvas.width;
+      const y = s.y * canvas.height;
+      let alpha  = s.alpha;
+      let radius = s.size;
+      let rayLen = 0;
+
+      if (s.twinkle) {
+        const bell = Math.sin((s.twinkle.t / s.twinkle.dur) * Math.PI);
+        alpha  = s.alpha + bell * (1 - s.alpha) * 0.88;
+        radius = s.size  + bell * s.size * 0.55;
+        if (s.twinkle.hasRays) rayLen = bell * 4.5;
+      }
+
+      ctx.save();
+      ctx.globalAlpha = Math.min(alpha, 1);
+      ctx.fillStyle   = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (rayLen > 0.4) {
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth   = 0.55;
+        ctx.globalAlpha = Math.min(alpha * 0.55, 1);
+        for (let i = 0; i < 4; i++) {
+          const ang = (i / 4) * Math.PI * 2;
+          const cos = Math.cos(ang), sin = Math.sin(ang);
+          ctx.beginPath();
+          ctx.moveTo(x + cos * radius, y + sin * radius);
+          ctx.lineTo(x + cos * (radius + rayLen), y + sin * (radius + rayLen));
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
+    function tick() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const s of stars) {
+        s.x += DRIFT_PX / canvas.width;
+        if (s.x > 1) s.x -= 1;
+
+        if (s.twinkle) {
+          s.twinkle.t++;
+          if (s.twinkle.t >= s.twinkle.dur) {
+            s.twinkle = null;
+            s.nextTwinkle = rand(100, 700);
+          }
+        } else {
+          s.nextTwinkle--;
+          if (s.nextTwinkle <= 0) {
+            s.twinkle = { t: 0, dur: Math.round(rand(45, 95)), hasRays: Math.random() < 0.32 };
+          }
+        }
+        drawStar(s);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    tick();
+  </script>
+</body>
+</html>
