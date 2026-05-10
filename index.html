@@ -8,6 +8,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600&family=Outfit:wght@700;800&family=Nunito:wght@500;600&display=swap" rel="stylesheet" />
   <style>
+    :root {
+      --tbh: 358;
+      --tbs: 60%;
+      --tbl: 39%;
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       width: 100%; min-height: 100%;
@@ -30,19 +35,21 @@
 
     /* ── Card ─────────────────────────────────────────────── */
     .card {
-      background: #150d0d;
-      border: 1px solid #2e1e1e;
+      background: hsl(var(--tbh), calc(var(--tbs) - 9%), calc(var(--tbl) - 25%));
+      border: 1px solid hsl(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) - 12%));
       border-radius: 20px;
       width: 100%; max-width: 420px;
       overflow: hidden;
-      box-shadow: 0 0 60px rgba(200,68,68,0.08), 0 24px 48px rgba(0,0,0,0.6);
+      box-shadow: 0 0 60px hsla(calc(var(--tbh) - 1), calc(var(--tbs) + 58%), calc(var(--tbl) + 56%), 0.08), 0 24px 48px rgba(0,0,0,0.6);
     }
 
     /* ── Title bar ────────────────────────────────────────── */
     .title-bar {
       padding: 9px 18px;
-      background: linear-gradient(180deg, #1e1212 0%, #161010 100%);
-      border-bottom: 1px solid #3a2020;
+      background: linear-gradient(180deg,
+        hsl(var(--tbh), var(--tbs), var(--tbl)) 0%,
+        hsl(var(--tbh), calc(var(--tbs) - 1%), calc(var(--tbl) - 1%)) 100%);
+      border-bottom: 1px solid hsl(var(--tbh), calc(var(--tbs) - 4%), calc(var(--tbl) + 10%));
       display: flex; align-items: center; justify-content: center;
     }
     .eyebrow {
@@ -50,7 +57,7 @@
       font-size: 14px; font-weight: 600;
       letter-spacing: 0.15em; word-spacing: -0.18em;
       text-transform: uppercase;
-      color: #c87070;
+      color: hsl(calc(var(--tbh) - 1), calc(var(--tbs) + 17%), calc(var(--tbl) + 51%));
     }
 
     /* ── Project button ───────────────────────────────────── */
@@ -61,19 +68,20 @@
     .project-btn {
       display: inline-flex; align-items: center; gap: 10px;
       padding: 13px 28px;
-      background: #1c0f0f;
-      border: 1px solid #6a2f2f;
+      background: hsl(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) - 20%));
+      border: 1px solid hsl(calc(var(--tbh) - 1), calc(var(--tbs) + 58%), calc(var(--tbl) + 40%));
       border-radius: 50px;
       text-decoration: none;
       font-family: 'DM Mono', monospace;
       font-size: 14px; font-weight: 600;
-      color: #c4a0a0; letter-spacing: 0.04em;
+      color: hsl(calc(var(--tbh) - 1), calc(var(--tbs) + 17%), calc(var(--tbl) + 51%));
+      letter-spacing: 0.04em;
       transition: background 0.15s, border-color 0.15s, color 0.15s;
     }
     .project-btn:hover {
-      background: #2a1515;
-      border-color: #c84444;
-      color: #f0d0d0;
+      background: hsl(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) + 5%));
+      border-color: hsl(calc(var(--tbh) - 6), calc(var(--tbs) + 65%), calc(var(--tbl) + 63%));
+      color: hsl(calc(var(--tbh) - 1), calc(var(--tbs) + 58%), calc(var(--tbl) + 56%));
     }
   </style>
 </head>

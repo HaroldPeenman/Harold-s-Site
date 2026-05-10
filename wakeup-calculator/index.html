@@ -13,6 +13,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600&family=Outfit:wght@700;800&family=Space+Grotesk:wght@600;700&family=Poppins:wght@600;700&family=Nunito:wght@500;600;700&display=swap" rel="stylesheet" />
   <style>
+    :root {
+      --tbh: 232;
+      --tbs: 64%;
+      --tbl: 39%;
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       width: 100%; height: 100%;
@@ -250,6 +255,7 @@
           <style>{`
             * { cursor: default !important; user-select: none !important; }
             .close-btn         { cursor: pointer !important; }
+            .close-btn *       { cursor: pointer !important; }
             .sleep-slider      { cursor: pointer !important; }
             .custom-time-wrap  { cursor: pointer !important; }
             .custom-time-wrap input { cursor: pointer !important; }
@@ -295,39 +301,52 @@
             }
 
             .card {
-              background: #111118;
-              border: 1px solid #1e1e2e;
+              background: hsl(var(--tbh), calc(var(--tbs) - 9%), calc(var(--tbl) - 25%));
+              border: 1px solid hsl(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) - 12%));
               border-radius: 20px;
               width: 100%;
               max-width: 380px;
               overflow: hidden;
-              box-shadow: 0 0 60px rgba(99,102,241,0.08), 0 24px 48px rgba(0,0,0,0.6);
+              box-shadow: 0 0 60px hsla(calc(var(--tbh) - 1), calc(var(--tbs) + 58%), calc(var(--tbl) + 56%), 0.12), 0 24px 48px rgba(0,0,0,0.6);
             }
             .title-bar {
               padding: 9px 12px 9px 18px;
-              background: linear-gradient(180deg, #18182a 0%, #131320 100%);
-              border-bottom: 1px solid #2a2a42;
+              background: linear-gradient(180deg,
+                hsl(var(--tbh), var(--tbs), var(--tbl)) 0%,
+                hsl(var(--tbh), calc(var(--tbs) - 1%), calc(var(--tbl) - 1%)) 100%);
+              border-bottom: 1px solid hsl(var(--tbh), calc(var(--tbs) - 4%), calc(var(--tbl) + 10%));
               display: flex; align-items: center;
               justify-content: space-between; gap: 8px;
             }
             .close-btn {
               width: 26px; height: 26px; border-radius: 50%;
-              background: transparent; border: 1px solid #4b5563;
-              color: #4b5563; font-size: 13px; line-height: 1;
+              background: hsl(var(--tbh), var(--tbs), calc(var(--tbl) - 11%));
+              border: 1px solid hsl(calc(var(--tbh) - 1), calc(var(--tbs) + 17%), calc(var(--tbl) + 51%));
+              color: hsl(calc(var(--tbh) - 1), calc(var(--tbs) + 17%), calc(var(--tbl) + 51%));
+              font-size: 13px; line-height: 1;
               display: flex; align-items: center; justify-content: center;
               transition: background 0.15s, color 0.15s, border-color 0.15s;
               flex-shrink: 0; text-decoration: none;
             }
-            .home-btn:hover { background: #1a1a3a; border-color: #6366f1; color: #818cf8; }
-            .dl-btn:hover   { background: #0f2a1f; border-color: #34d399; color: #34d399; }
+            .home-btn:hover {
+              background: hsl(var(--tbh), calc(var(--tbs) - 18%), calc(var(--tbl) + 7%));
+              border-color: hsl(var(--tbh), 92%, 93%);
+              color: hsl(var(--tbh), 92%, 93%);
+            }
+            .dl-btn:hover {
+              background: hsl(var(--tbh), calc(var(--tbs) - 18%), calc(var(--tbl) + 7%));
+              border-color: hsl(var(--tbh), 92%, 93%);
+              color: hsl(var(--tbh), 92%, 93%);
+            }
             .card-header {
               padding: 16px 20px 18px 28px;
-              border-bottom: 1px solid #1e1e2e;
+              border-bottom: 1px solid hsl(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) - 12%));
             }
             .eyebrow {
               font-family: 'DM Mono', monospace;
               font-size: 14px; letter-spacing: 0.15em; word-spacing: -0.18em;
-              text-transform: uppercase; color: #7577c8;
+              text-transform: uppercase;
+              color: hsl(calc(var(--tbh) - 1), calc(var(--tbs) + 17%), calc(var(--tbl) + 51%));
             }
             .title {
               font-family: 'Outfit', sans-serif;
@@ -432,14 +451,17 @@
               display: flex; align-items: center;
               padding: 13px 28px; gap: 12px;
             }
-            .row.is-clockin { background: rgba(99,102,241,0.04); }
+            .row.is-clockin { }
             .row-dot {
               width: 8px; height: 8px; border-radius: 50%;
-              background: #55557a; border: 1.5px solid #7070a0; flex-shrink: 0;
+              background: hsl(var(--tbh), calc(var(--tbs) - 8%), calc(var(--tbl) + 30%));
+              border: 1.5px solid hsl(var(--tbh), calc(var(--tbs) - 6%), calc(var(--tbl) + 42%));
+              flex-shrink: 0;
             }
             .row.is-clockin .row-dot {
-              background: #6366f1; border-color: #818cf8;
-              box-shadow: 0 0 8px rgba(99,102,241,0.5);
+              background: hsl(calc(var(--tbh) - 1), calc(var(--tbs) + 58%), calc(var(--tbl) + 56%));
+              border-color: hsl(calc(var(--tbh) - 6), calc(var(--tbs) + 65%), calc(var(--tbl) + 63%));
+              box-shadow: 0 0 8px hsla(calc(var(--tbh) - 1), calc(var(--tbs) + 58%), calc(var(--tbl) + 56%), 0.5);
             }
             .row.is-alarm .row-dot {
               background: #34d399; border-color: #5eedb5;
@@ -449,7 +471,7 @@
               flex: 1; font-family: 'DM Mono', monospace;
               font-size: 13px; color: #c4cde0; letter-spacing: 0.02em;
             }
-            .row.is-clockin .row-label { color: #d8e0ff; font-size: 13.5px; font-weight: 700; }
+            .row.is-clockin .row-label { }
             .row.is-alarm   .row-label { color: #86efca; font-size: 13.5px; font-weight: 700; }
             .row-offset {
               font-family: 'DM Mono', monospace;
@@ -463,20 +485,20 @@
               color: #e5e7eb; min-width: 82px;
               text-align: right; letter-spacing: 0.01em;
             }
-            .row.is-clockin .row-time { color: #a5b4fc; }
+            .row.is-clockin .row-time { }
             .row.is-alarm   .row-time { color: #6ee7b7; }
             .row-time .period {
               font-family: 'DM Mono', monospace;
               font-size: 11px; font-weight: 600;
               color: #6b7280; margin-left: 3px; letter-spacing: 0.04em;
             }
-            .row.is-clockin .row-time .period { color: #818cf8; }
+            .row.is-clockin .row-time .period { }
             .row.is-alarm   .row-time .period { color: #34d399; }
 
             /* ── Clock-in section ── */
             .clock-in-section {
               padding: 17px 28px;
-              border-top: 1px solid #1e1e2e;
+              border-top: 1px solid hsl(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) - 12%));
               display: flex; align-items: center;
               justify-content: space-between; gap: 12px;
             }
@@ -487,16 +509,17 @@
               color: #9ca3af;
             }
             .custom-time-wrap {
-              background: #1a1a28;
-              border: 1px solid #6366f1; border-radius: 10px;
+              background: hsl(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) - 20%));
+              border: 1px solid hsl(calc(var(--tbh) - 1), calc(var(--tbs) + 58%), calc(var(--tbl) + 40%));
+              border-radius: 10px;
               padding: 8px 14px;
               display: flex; align-items: baseline; gap: 5px;
               position: relative;
               transition: box-shadow 0.2s, border-color 0.2s;
             }
             .custom-time-wrap:hover {
-              border-color: #818cf8;
-              box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+              border-color: hsl(calc(var(--tbh) - 6), calc(var(--tbs) + 65%), calc(var(--tbl) + 63%));
+              box-shadow: 0 0 0 3px hsla(calc(var(--tbh) - 1), calc(var(--tbs) + 58%), calc(var(--tbl) + 56%), 0.2);
             }
             .ctime-nums {
               font-family: 'Nunito', sans-serif;
