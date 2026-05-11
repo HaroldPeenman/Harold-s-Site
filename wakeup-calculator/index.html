@@ -170,6 +170,15 @@
       );
     }
 
+    const PALETTE = [
+      { label:'red',    bg:'#9e282b', border:'#e05658' },
+      { label:'orange', bg:'#a15726', border:'#e07c46' },
+      { label:'yellow', bg:'#a18826', border:'#d4ae38' },
+      { label:'green',  bg:'#26a153', border:'#40d878' },
+      { label:'blue',   bg:'#2434a4', border:'#5a6ce2' },
+      { label:'purple', bg:'#6826a1', border:'#9050d8' },
+    ];
+
     function App() {
       const [clockIn, setClockIn] = useState("07:30");
       const [sleepHours, setSleepHours] = useState(8);
@@ -376,7 +385,7 @@
               display: grid;
               grid-template-columns: 1fr auto;
               grid-template-areas: "label right" "time right";
-              column-gap: 16px; row-gap: 2px;
+              column-gap: 16px; row-gap: 0px;
               margin-top: 12px;
             }
             .lights-out-label {
@@ -384,15 +393,43 @@
               font-family: 'DM Mono', monospace;
               font-size: 13px; font-weight: 600;
               color: #7dbfa0; letter-spacing: 0.05em;
+              padding-bottom: 3px;
             }
             .sleep-sym {
               position: absolute;
               left: 50%; top: 50%;
               transform: translate(-50%, -50%);
-              color: #3d7a60;
+              color: #6ee7b7;
               line-height: 1;
               pointer-events: none;
             }
+
+            /* ── Color palette buttons ── */
+            .color-buttons-section {
+              padding: 14px 28px 16px;
+              border-top: 1px solid hsl(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) - 12%));
+              display: flex; align-items: center;
+              justify-content: center; gap: 12px;
+            }
+            .color-btn {
+              width: 26px; height: 26px; border-radius: 50%;
+              border: 1.5px solid;
+              cursor: pointer !important;
+              position: relative; overflow: hidden;
+              flex-shrink: 0;
+              transition: transform 0.15s, filter 0.15s;
+            }
+            .color-btn * { cursor: pointer !important; }
+            .color-btn::after {
+              content: '';
+              position: absolute;
+              top: 2px; left: 4px;
+              width: 55%; height: 42%;
+              background: radial-gradient(ellipse, rgba(255,255,255,0.45) 0%, transparent 75%);
+              border-radius: 50%;
+              pointer-events: none;
+            }
+            .color-btn:hover { transform: scale(1.15); filter: brightness(1.22); }
             .sleep-time-wrapper { grid-area: time; align-self: start; }
             .sleep-time {
               font-family: 'Nunito', sans-serif;
@@ -507,7 +544,7 @@
             /* ── Clock-in section ── */
             .clock-in-section {
               padding: 17px 28px;
-              border-top: 1px solid hsl(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) - 12%));
+              border-bottom: 1px solid hsl(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) - 12%));
               display: flex; align-items: center;
               justify-content: space-between; gap: 12px;
             }
@@ -562,6 +599,17 @@
               <h1 className="title">Pre-shift<br/>Timeline</h1>
             </div>
 
+            {/* Clock-in input — moved between title and sleep box */}
+            <div className="clock-in-section">
+              <div className="clock-in-label">Clock-In Time</div>
+              <CustomTimeInput
+                value={clockIn}
+                displayValue={displayClockIn}
+                showShine={showShine}
+                onChange={handleClockInChange}
+              />
+            </div>
+
             {/* Capture zone: sleep banner + rows */}
             <div id="capture-zone">
             {/* Sleep banner */}
@@ -597,7 +645,7 @@
                   </div>
                   <div className="sleep-sym">
                     <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
-                      <path d="M0 7H15M9 1L15 7L9 13" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M0 7H15M9 1L15 7L9 13" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </div>
                   <div className="sleep-right-col">
@@ -621,8 +669,8 @@
                       <div className="sleep-hrs-count" style={{color: trackColor}}>{sleepHours}</div>
                     </div>
                     <div className="sleep-hrs-labels">
-                      <div className="sleep-hrs-unit" style={{color: trackColor}}>hours</div>
-                      <div className="sleep-hrs-of"   style={{color: trackColor}}>of sleep</div>
+                      <div className="sleep-hrs-unit" style={{color: trackColor}}>{sleepHours === 1 ? 'hour' : 'hours'}</div>
+                      <div className="sleep-hrs-of"   style={{color: trackColor}}>{sleepHours === 1 ? 'of sleep' : 'of sleep'}</div>
                     </div>
                   </div>
                 </div>
@@ -652,15 +700,16 @@
             </div>
             </div>{/* end capture-zone */}
 
-            {/* Clock-in input */}
-            <div className="clock-in-section">
-              <div className="clock-in-label">Clock-In Time</div>
-              <CustomTimeInput
-                value={clockIn}
-                displayValue={displayClockIn}
-                showShine={showShine}
-                onChange={handleClockInChange}
-              />
+            {/* Color palette buttons */}
+            <div className="color-buttons-section">
+              {PALETTE.map(({ label, bg, border }) => (
+                <button
+                  key={label}
+                  className="color-btn"
+                  title={label}
+                  style={{ background: bg, borderColor: border }}
+                />
+              ))}
             </div>
           </div>
         </div>
