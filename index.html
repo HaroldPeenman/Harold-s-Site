@@ -29,8 +29,9 @@
     #content {
       position: relative; z-index: 1;
       min-height: 100vh;
-      display: flex; align-items: center; justify-content: center;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
       padding: 32px 24px;
+      gap: 0;
     }
 
     /* ── Card ─────────────────────────────────────────────── */
@@ -83,6 +84,31 @@
       border-color: hsl(var(--tbh), 92%, 93%);
       color: hsl(var(--tbh), 92%, 93%);
     }
+
+    /* ── Color palette buttons ── */
+    .color-buttons-section {
+      padding: 10px 0 0;
+      display: flex; align-items: center;
+      justify-content: center; gap: 12px;
+    }
+    .color-btn {
+      width: 26px; height: 26px; border-radius: 50%;
+      border: 1.5px solid;
+      cursor: pointer;
+      position: relative; overflow: hidden;
+      flex-shrink: 0;
+      transition: transform 0.15s, filter 0.15s;
+    }
+    .color-btn::after {
+      content: '';
+      position: absolute;
+      top: 2px; left: 4px;
+      width: 55%; height: 42%;
+      background: radial-gradient(ellipse, rgba(255,255,255,0.45) 0%, transparent 75%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .color-btn:hover { transform: scale(1.15); filter: brightness(1.22); }
   </style>
 </head>
 <body>
@@ -98,9 +124,29 @@
         </a>
       </div>
     </div>
+
+    <!-- Color palette — detached below card -->
+    <div class="color-buttons-section">
+      <button class="color-btn" title="red"    style="background:#9e282b; border-color:#e05658" data-h="358" data-s="60" data-l="39"></button>
+      <button class="color-btn" title="orange" style="background:#a15726; border-color:#e07c46" data-h="24"  data-s="62" data-l="39"></button>
+      <button class="color-btn" title="yellow" style="background:#a18826; border-color:#d4ae38" data-h="48"  data-s="62" data-l="39"></button>
+      <button class="color-btn" title="green"  style="background:#26a153; border-color:#40d878" data-h="142" data-s="62" data-l="39"></button>
+      <button class="color-btn" title="blue"   style="background:#2434a4; border-color:#5a6ce2" data-h="232" data-s="64" data-l="39"></button>
+      <button class="color-btn" title="purple" style="background:#6826a1; border-color:#9050d8" data-h="272" data-s="62" data-l="39"></button>
+    </div>
   </div>
 
   <script>
+    // ── Color palette ──────────────────────────────────────
+    document.querySelectorAll('.color-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const root = document.documentElement;
+        root.style.setProperty('--tbh', btn.dataset.h);
+        root.style.setProperty('--tbs', btn.dataset.s + '%');
+        root.style.setProperty('--tbl', btn.dataset.l + '%');
+      });
+    });
+
     // ── Starfield (identical to calculator) ────────────────
     const canvas = document.getElementById("stars");
     const ctx    = canvas.getContext("2d");

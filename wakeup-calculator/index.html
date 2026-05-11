@@ -265,7 +265,7 @@
       return (
         <div style={{
           minHeight:"100dvh", background:"transparent",
-          display:"flex", alignItems:"center", justifyContent:"center",
+          display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
           fontFamily:"'DM Mono', monospace", padding:"24px",
         }}>
           <style>{`
@@ -413,8 +413,7 @@
 
             /* ── Color palette buttons ── */
             .color-buttons-section {
-              padding: 14px 28px 16px;
-              border-top: 1px solid hsl(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) - 12%));
+              padding: 10px 0 0;
               display: flex; align-items: center;
               justify-content: center; gap: 12px;
             }
@@ -707,18 +706,19 @@
             </div>
             </div>{/* end capture-zone */}
 
-            {/* Color palette buttons */}
-            <div className="color-buttons-section">
-              {PALETTE.map(({ label, bg, border, h, s, l }) => (
-                <button
-                  key={label}
-                  className="color-btn"
-                  title={label}
-                  style={{ background: bg, borderColor: border }}
-                  onClick={() => handleColorChange({ h, s, l })}
-                />
-              ))}
-            </div>
+          </div>{/* end card */}
+
+          {/* Color palette — detached below card */}
+          <div className="color-buttons-section">
+            {PALETTE.map(({ label, bg, border, h, s, l }) => (
+              <button
+                key={label}
+                className="color-btn"
+                title={label}
+                style={{ background: bg, borderColor: border }}
+                onClick={() => handleColorChange({ h, s, l })}
+              />
+            ))}
           </div>
         </div>
       );
