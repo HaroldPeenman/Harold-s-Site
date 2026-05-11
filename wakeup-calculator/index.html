@@ -387,29 +387,63 @@
       const handleDownload = async () => {
         const zone = document.getElementById('capture-zone');
         if (!zone || !window.html2canvas) return;
+
         const glows    = zone.querySelectorAll('.sleep-glow');
         const addWrap  = zone.querySelector('.row-add-wrap');
         const screenshotTitle = zone.querySelector('.title-screenshot');
         const titleInput = document.querySelector('.title');
+        const chevrons = zone.querySelectorAll('.row-chevron');
+
         glows.forEach(g => g.style.opacity = '0');
-        const sleepTop    = zone.querySelector('.sleep-top');
-        const sliderWrap  = zone.querySelector('.sleep-slider-wrap');
+        const sleepTop   = zone.querySelector('.sleep-top');
+        const sliderWrap = zone.querySelector('.sleep-slider-wrap');
         if (sleepTop)   sleepTop.style.display   = 'none';
         if (sliderWrap) sliderWrap.style.display = 'none';
         if (addWrap)    addWrap.style.display    = 'none';
-        if (screenshotTitle) { screenshotTitle.textContent = titleText; screenshotTitle.style.display = 'block'; }
+        if (screenshotTitle) { screenshotTitle.textContent = titleText; screenshotTitle.style.display = '-webkit-box'; }
         if (titleInput) titleInput.style.display = 'none';
+
+        // Hide chevrons — they're opacity:0 but take layout space, misaligning numbers
+        chevrons.forEach(c => c.style.display = 'none');
+
+        // Swap label textareas for divs — html2canvas doesn't clip textarea overflow reliably
+        const labelTextareas = Array.from(zone.querySelectorAll('.row-label-input'));
+        const labelSwaps = labelTextareas.map(ta => {
+          const div = document.createElement('div');
+          const cs  = window.getComputedStyle(ta);
+          div.textContent     = ta.value;
+          div.style.fontFamily    = cs.fontFamily;
+          div.style.fontSize      = cs.fontSize;
+          div.style.fontWeight    = cs.fontWeight;
+          div.style.color         = cs.color;
+          div.style.lineHeight    = cs.lineHeight;
+          div.style.letterSpacing = cs.letterSpacing;
+          div.style.wordBreak     = 'break-word';
+          div.style.overflow      = 'hidden';
+          div.style.height        = ta.offsetHeight + 'px';
+          div.style.flex          = '1';
+          div.style.minWidth      = '0';
+          if (ta.style.marginLeft) div.style.marginLeft = ta.style.marginLeft;
+          ta.parentNode.insertBefore(div, ta);
+          ta.style.display = 'none';
+          return { ta, div };
+        });
+
         const computedBg = getComputedStyle(document.querySelector('.card')).backgroundColor;
         const canvas = await window.html2canvas(zone, {
-          backgroundColor: computedBg, scale: 2, logging: false,
-          useCORS: true,
+          backgroundColor: computedBg, scale: 2, logging: false, useCORS: true,
         });
+
+        // Restore everything
         glows.forEach(g => g.style.opacity = '');
         if (sleepTop)   sleepTop.style.display   = '';
         if (sliderWrap) sliderWrap.style.display = '';
         if (addWrap)    addWrap.style.display    = '';
         if (screenshotTitle) screenshotTitle.style.display = 'none';
         if (titleInput) titleInput.style.display = '';
+        chevrons.forEach(c => c.style.display = '');
+        labelSwaps.forEach(({ ta, div }) => { ta.style.display = ''; div.remove(); });
+
         canvas.toBlob(async (blob) => {
           const file = new File([blob], 'wake-up-schedule.png', { type: 'image/png' });
           if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -566,7 +600,10 @@
               color: #f0f0f8; line-height: 1.22;
               letter-spacing: 0.01em;
               padding: 16px 28px 14px;
-              white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+              word-break: break-word;
+              overflow: hidden;
+              -webkit-box-orient: vertical;
+              -webkit-line-clamp: 3;
             }
 
             /* ── Sleep banner ── */
@@ -932,6 +969,7 @@
                 rows="1"
                 spellCheck={false}
                 ref={el => resizeTitleLabel(el)}
+                onScroll={e => e.target.scrollTop = 0}
                 onChange={e => { setTitleText(e.target.value); resizeTitleLabel(e.target); }}
               />
             </div>
@@ -1033,6 +1071,7 @@
                       ref={el => resizeLabel(el)}
                       onFocus={() => setFocusedLabelId(row.id)}
                       onBlur={() => setFocusedLabelId(null)}
+                      onScroll={e => e.target.scrollTop = 0}
                       onChange={e => { updateLabel(row.id, e.target.value); resizeLabel(e.target); }} />
                     <div className="row-offset-wrap">
                       <span className="row-offset-pfx">−</span>
@@ -1081,6 +1120,7 @@
                           ref={el => resizeLabel(el)}
                           onFocus={() => setFocusedLabelId(row.id)}
                           onBlur={() => setFocusedLabelId(null)}
+                          onScroll={e => e.target.scrollTop = 0}
                           onChange={e => { updateLabel(row.id, e.target.value); resizeLabel(e.target); }} />
                         <div className="row-offset-wrap">
                           <span className="row-offset-pfx">−</span>
@@ -1135,6 +1175,7 @@
                       ref={el => resizeLabel(el)}
                       onFocus={() => setFocusedLabelId(row.id)}
                       onBlur={() => setFocusedLabelId(null)}
+                      onScroll={e => e.target.scrollTop = 0}
                       onChange={e => { updateLabel(row.id, e.target.value); resizeLabel(e.target); }} />
                     <div className="row-time" style={{marginLeft:'auto'}}>{h}:{m}<span className="period">{period}</span></div>
                   </div>
