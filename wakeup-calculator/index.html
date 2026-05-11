@@ -217,11 +217,18 @@
         if (!zone || !window.html2canvas) return;
         const glows = zone.querySelectorAll('.sleep-glow');
         glows.forEach(g => g.style.opacity = '0');
+        const sleepTop    = zone.querySelector('.sleep-top');
+        const sliderWrap  = zone.querySelector('.sleep-slider-wrap');
+        if (sleepTop)   sleepTop.style.display   = 'none';
+        if (sliderWrap) sliderWrap.style.display = 'none';
+        const computedBg = getComputedStyle(document.querySelector('.card')).backgroundColor;
         const canvas = await window.html2canvas(zone, {
-          backgroundColor: '#111118', scale: 2, logging: false,
+          backgroundColor: computedBg, scale: 2, logging: false,
           useCORS: true,
         });
         glows.forEach(g => g.style.opacity = '');
+        if (sleepTop)   sleepTop.style.display   = '';
+        if (sliderWrap) sliderWrap.style.display = '';
         canvas.toBlob(async (blob) => {
           const file = new File([blob], 'wake-up-schedule.png', { type: 'image/png' });
           if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -479,6 +486,9 @@
               letter-spacing: 0.08em;
               position: relative; z-index: 1;
             }
+            .sleep-hrs-of {
+              color: hsl(var(--tbh), 34%, 62%);
+            }
             .sleep-slider-wrap { padding: 2px 0 0; }
             .sleep-slider {
               -webkit-appearance: none; appearance: none;
@@ -676,7 +686,7 @@
                     </div>
                     <div className="sleep-hrs-labels">
                       <div className="sleep-hrs-unit" style={{color: trackColor}}>{sleepHours === 1 ? 'hour' : 'hours'}</div>
-                      <div className="sleep-hrs-of"   style={{color: trackColor}}>{sleepHours === 1 ? 'of sleep' : 'of sleep'}</div>
+                      <div className="sleep-hrs-of">of sleep</div>
                     </div>
                   </div>
                 </div>
