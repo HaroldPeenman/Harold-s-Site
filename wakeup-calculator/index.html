@@ -41,12 +41,12 @@
   <script type="text/babel">
     const { useState, useRef, useEffect } = React;
 
-    const MILESTONES = [
-      { label: "Set First Alarm", offsetMin: -100 },
-      { label: "Out of Bed",      offsetMin:  -70 },
-      { label: "Out of Shower",   offsetMin:  -40 },
-      { label: "Out of House",    offsetMin:  -30 },
-      { label: "Start of Shift",  offsetMin:    0 },
+    const INITIAL_ROWS = [
+      { id:1, label:'Set First Alarm', offsetMin:-100 },
+      { id:2, label:'Out of Bed',      offsetMin: -70 },
+      { id:3, label:'Out of Shower',   offsetMin: -40 },
+      { id:4, label:'Out of House',    offsetMin: -30 },
+      { id:5, label:'Start of Event',  offsetMin:   0 },
     ];
 
     // Per-hour config: color, banner border, gradients, glow
@@ -162,6 +162,7 @@
           <input
             ref={hiddenRef}
             type="time"
+            step="300"
             value={value}
             onChange={onChange}
             style={{ position:'absolute', opacity:0, inset:0, cursor:'pointer', zIndex:1 }}
@@ -184,6 +185,177 @@
       const [sleepHours, setSleepHours] = useState(8);
       const [displayClockIn, setDisplayClockIn] = useState("00:00");
       const [showShine, setShowShine] = useState(false);
+      const [titleText, setTitleText] = useState("Pre-event Timeline");
+
+      const resizeTitleLabel = (el) => {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, Math.ceil(28 * 1.22 * 2)) + 'px';
+        el.scrollTop = 0;
+      };
+      const [rows, setRows] = useState(INITIAL_ROWS);
+      const [nextId, setNextId] = useState(6);
+      const [focusedLabelId, setFocusedLabelId] = useState(null);
+      const [selectedRowId, setSelectedRowId] = useState(null);
+
+      // Deselect when tapping outside any row
+      React.useEffect(() => {
+        const handler = (e) => {
+          if (!e.target.closest?.('.row')) setSelectedRowId(null);
+        };
+        document.addEventListener('pointerdown', handler);
+        return () => document.removeEventListener('pointerdown', handler);
+      }, []);
+
+      const handleRowTap = (e, id) => {
+        if (e.target.closest('button, input, textarea')) return;
+        setSelectedRowId(prev => prev === id ? null : id);
+      };
+
+      // Unified mouse+touch events for chevron hold-to-repeat
+      const chevronEvents = (fn) => ({
+        onMouseDown:   ()  => startHold(fn),
+        onMouseUp:     stopHold,
+        onMouseLeave:  stopHold,
+        onTouchStart:  (e) => { e.preventDefault(); startHold(fn); },
+        onTouchEnd:    stopHold,
+        onTouchCancel: stopHold,
+      });
+
+      const holdRef = useRef(null);
+      const startHold = (fn) => { fn(); holdRef.current = setInterval(fn, 110); };
+      const stopHold  = ()   => { clearInterval(holdRef.current); holdRef.current = null; };
+
+      const stepOffsetH = (id, dir) =>
+        setRows(prev => sortMiddle(prev.map(r => {
+          if (r.id !== id) return r;
+          const h = Math.floor(Math.abs(r.offsetMin) / 60);
+          const m = Math.abs(r.offsetMin) % 60;
+          const newH = h + dir;
+          if (newH < 0 || newH > 12 || (newH === 12 && m > 0)) return r;
+          return {...r, offsetMin: -(newH * 60 + m)};
+        }), id === prev[0].id));
+
+      const stepOffsetM = (id, dir) =>
+        setRows(prev => sortMiddle(prev.map(r => {
+          if (r.id !== id) return r;
+          let h = Math.floor(Math.abs(r.offsetMin) / 60);
+          let m = Math.abs(r.offsetMin) % 60;
+          m += dir;
+          if (m >= 60) {
+            if (h >= 12) return r;
+            h += 1; m = 0;
+          } else if (m < 0) {
+            if (h <= 0) return r;
+            h -= 1; m = 59;
+          }
+          return {...r, offsetMin: -(h * 60 + m)};
+        }), id === prev[0].id));
+
+      const resizeLabel = (el) => {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, Math.ceil(13 * 1.45 * 3)) + 'px';
+        el.scrollTop = 0;
+      };
+
+      const getH = (offsetMin) => Math.floor(Math.abs(offsetMin) / 60);
+      const getM = (offsetMin) => Math.abs(offsetMin) % 60;
+
+      const sortMiddle = (arr, firstMoved = false) => {
+        const last  = arr[arr.length - 1];
+        let first   = {...arr[0]};
+
+        // Clamp middle rows that reach/pass the last row or exceed 12h
+        let middle = arr.slice(1, -1).map(r => {
+          if (r.offsetMin >= last.offsetMin) return {...r, offsetMin: last.offsetMin - 1};
+          if (r.offsetMin <= -720)           return {...r, offsetMin: -719};
+          return r;
+        });
+
+        // Sort middle rows earliest-first (most negative first)
+        middle.sort((a, b) => a.offsetMin - b.offsetMin);
+
+        if (firstMoved) {
+          // Tightest valid position for first row: must leave 1 min per middle row above last
+          const minFirst = -(middle.length + 1);
+          if (first.offsetMin > minFirst) first = {...first, offsetMin: minFirst};
+
+          // Cascade-push middle rows forward (less negative) to stay after first row
+          let prev = first;
+          middle = middle.map(r => {
+            if (r.offsetMin <= prev.offsetMin) {
+              const pushed = Math.min(prev.offsetMin + 1, last.offsetMin - 1);
+              prev = {offsetMin: pushed};
+              return {...r, offsetMin: pushed};
+            }
+            prev = r;
+            return r;
+          });
+          if (first.offsetMin < -720)            first = {...first, offsetMin: -720};
+          if (first.offsetMin >= last.offsetMin) first = {...first, offsetMin: last.offsetMin - 1};
+        } else {
+          // Middle row was edited → backward-cascade to resolve intra-middle collisions,
+          // then push first row back if it's been overtaken
+          for (let i = middle.length - 2; i >= 0; i--) {
+            if (middle[i].offsetMin >= middle[i + 1].offsetMin) {
+              middle[i] = {...middle[i], offsetMin: middle[i + 1].offsetMin - 1};
+            }
+          }
+          if (middle.length > 0 && first.offsetMin >= middle[0].offsetMin) {
+            first = {...first, offsetMin: Math.max(middle[0].offsetMin - 1, -720)};
+          }
+          if (first.offsetMin >= last.offsetMin) {
+            first = {...first, offsetMin: last.offsetMin - 1};
+          }
+          if (first.offsetMin < -720) first = {...first, offsetMin: -720};
+        }
+
+        return [first, ...middle, last];
+      };
+
+      const updateLabel = (id, label) =>
+        setRows(prev => prev.map(r => r.id === id ? {...r, label} : r));
+
+      const updateOffsetH = (id, val) =>
+        setRows(prev => {
+          const updated = prev.map(r => {
+            if (r.id !== id) return r;
+            const h = Math.min(12, Math.max(0, parseInt(val) || 0));
+            const m = Math.abs(r.offsetMin) % 60;
+            return {...r, offsetMin: -(h * 60 + m)};
+          });
+          return sortMiddle(updated, id === prev[0].id);
+        });
+
+      const updateOffsetM = (id, val) =>
+        setRows(prev => {
+          const updated = prev.map(r => {
+            if (r.id !== id) return r;
+            const h = Math.floor(Math.abs(r.offsetMin) / 60);
+            const m = Math.min(59, Math.max(0, parseInt(val) || 0));
+            return {...r, offsetMin: -(h * 60 + m)};
+          });
+          return sortMiddle(updated, id === prev[0].id);
+        });
+
+      const removeRow = (id) =>
+        setRows(prev => prev.filter(r => r.id !== id));
+
+      const addRow = () => {
+        setRows(prev => {
+          const numMiddle = prev.length - 2;
+          // Block if adding would require first row to exceed 12 hours
+          if (prev[0].offsetMin <= -(numMiddle + 2) && -(numMiddle + 2) < -720) return prev;
+          return sortMiddle([
+            prev[0],
+            ...prev.slice(1, -1),
+            { id: nextId, label: 'New Event', offsetMin: prev[0].offsetMin + 1 },
+            prev[prev.length - 1],
+          ], false);
+        });
+        setNextId(n => n + 1);
+      };
 
       // Roll-up animation on mount
       useEffect(() => {
@@ -215,12 +387,18 @@
       const handleDownload = async () => {
         const zone = document.getElementById('capture-zone');
         if (!zone || !window.html2canvas) return;
-        const glows = zone.querySelectorAll('.sleep-glow');
+        const glows    = zone.querySelectorAll('.sleep-glow');
+        const addWrap  = zone.querySelector('.row-add-wrap');
+        const screenshotTitle = zone.querySelector('.title-screenshot');
+        const titleInput = document.querySelector('.title');
         glows.forEach(g => g.style.opacity = '0');
         const sleepTop    = zone.querySelector('.sleep-top');
         const sliderWrap  = zone.querySelector('.sleep-slider-wrap');
         if (sleepTop)   sleepTop.style.display   = 'none';
         if (sliderWrap) sliderWrap.style.display = 'none';
+        if (addWrap)    addWrap.style.display    = 'none';
+        if (screenshotTitle) { screenshotTitle.textContent = titleText; screenshotTitle.style.display = 'block'; }
+        if (titleInput) titleInput.style.display = 'none';
         const computedBg = getComputedStyle(document.querySelector('.card')).backgroundColor;
         const canvas = await window.html2canvas(zone, {
           backgroundColor: computedBg, scale: 2, logging: false,
@@ -229,6 +407,9 @@
         glows.forEach(g => g.style.opacity = '');
         if (sleepTop)   sleepTop.style.display   = '';
         if (sliderWrap) sliderWrap.style.display = '';
+        if (addWrap)    addWrap.style.display    = '';
+        if (screenshotTitle) screenshotTitle.style.display = 'none';
+        if (titleInput) titleInput.style.display = '';
         canvas.toBlob(async (blob) => {
           const file = new File([blob], 'wake-up-schedule.png', { type: 'image/png' });
           if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -254,12 +435,7 @@
         }
       };
 
-      const milestones = MILESTONES.map((ms) => ({
-        ...ms,
-        time: addMinutes(clockIn, ms.offsetMin),
-      }));
-
-      const lightsOutTime = addMinutes(clockIn, -100 - sleepHours * 60);
+      const lightsOutTime = addMinutes(clockIn, rows[0].offsetMin - sleepHours * 60);
       const cfg = SLEEP_CFG[sleepHours];
       const trackColor = cfg.color;
       const bannerBg   = getBannerBg(sleepHours);
@@ -376,6 +552,21 @@
               font-size: 28px; font-weight: 800;
               color: #f0f0f8; line-height: 1.22;
               margin: 0; letter-spacing: 0.01em;
+              background: transparent; border: none; outline: none;
+              resize: none; overflow: hidden;
+              width: 100%; padding: 0;
+              max-height: calc(28px * 1.22 * 2);
+              word-break: break-word;
+              text-align: center;
+            }
+            .title-screenshot {
+              display: none;
+              font-family: 'Outfit', sans-serif;
+              font-size: 28px; font-weight: 800;
+              color: #f0f0f8; line-height: 1.22;
+              letter-spacing: 0.01em;
+              padding: 16px 28px 14px;
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
             }
 
             /* ── Sleep banner ── */
@@ -383,6 +574,7 @@
               margin: 0 20px;
               border-radius: 12px;
               padding: 14px 17px 16px;
+              border: 1px solid hsl(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) - 12%));
             }
             .sleep-top {
               display: flex; align-items: center;
@@ -541,6 +733,129 @@
               color: #6e7a90; min-width: 52px; text-align: right;
             }
             .row.is-alarm .row-offset { color: #4aaa7a; }
+            /* ── Editable row elements ── */
+            .row-label-input, .row-offset-h, .row-offset-m { cursor: text !important; }
+            .row-remove-btn, .row-add-btn, .row-chevron { cursor: pointer !important; }
+            .row-label-input {
+              flex: 1; min-width: 0;
+              font-family: 'DM Mono', monospace;
+              font-size: 13px; color: #c4cde0;
+              background: transparent; border: none; outline: none;
+              border-bottom: 1px solid transparent;
+              letter-spacing: 0.02em; padding: 0;
+              transition: border-color 0.15s, color 0.15s;
+              resize: none; overflow: hidden;
+              line-height: 1.45;
+              max-height: calc(13px * 1.45 * 3);
+              word-break: break-word;
+            }
+            .row-label-input:focus { color: #e8eaf6; border-bottom-color: rgba(255,255,255,0.15); }
+            .row.is-alarm .row-label-input { color: #86efca; font-size: 13.5px; font-weight: 700; }
+            .row-label-input {
+              flex: 1; min-width: 0; width: 100%;
+              font-family: 'DM Mono', monospace;
+              font-size: 13px; color: #c4cde0;
+              background: transparent; border: none; outline: none;
+              border-bottom: 1px solid transparent;
+              letter-spacing: 0.02em; padding: 0;
+              transition: border-color 0.15s, color 0.15s;
+              resize: none; overflow: hidden;
+              line-height: 1.45;
+              max-height: calc(13px * 1.45 * 3);
+              word-break: break-word;
+            }
+            .row-label-input:focus { color: #e8eaf6; border-bottom-color: rgba(255,255,255,0.15); }
+            .row.is-alarm .row-label-input { color: #86efca; font-size: 13.5px; font-weight: 700; }
+            .row-label-final {
+              flex-grow: 0; flex-shrink: 0;
+              width: 46%; max-width: 46%;
+            }
+            .row-offset-wrap {
+              display: flex; align-items: center; gap: 0;
+              min-width: 66px; justify-content: flex-end; flex-shrink: 0;
+            }
+            .offset-spinner-m { margin-left: 4px; }
+            .row-offset-pfx {
+              font-family: 'DM Mono', monospace;
+              font-size: 11px; font-weight: 500; color: #6e7a90; flex-shrink: 0;
+              line-height: 1;
+            }
+            .row.is-alarm .row-offset-pfx { color: #4aaa7a; }
+            .offset-spinner {
+              display: flex; flex-direction: column; align-items: center; gap: 0;
+            }
+            .row-chevron {
+              background: transparent; border: none;
+              color: #6e7a90; padding: 5px 1px;
+              opacity: 0; transition: opacity 0.12s, color 0.12s;
+              line-height: 1; display: flex; align-items: center; justify-content: center;
+              flex-shrink: 0;
+            }
+            .row:hover .row-chevron { opacity: 1; }
+            .row.is-selected .row-chevron { opacity: 1; }
+            .row-chevron:hover { color: #c4cde0; }
+            .row.is-alarm:hover .row-chevron { color: #6ee7b7; }
+            .row.is-alarm.is-selected .row-chevron { color: #6ee7b7; }
+            .row-offset-h, .row-offset-m {
+              font-family: 'DM Mono', monospace;
+              font-size: 11px; font-weight: 500; color: #6e7a90;
+              background: transparent; border: none; outline: none;
+              border-bottom: 1px solid transparent;
+              text-align: center; padding: 0;
+              -moz-appearance: textfield;
+              transition: border-color 0.15s, color 0.15s;
+            }
+            .row-offset-h { width: 14px; }
+            .row-offset-m { width: 18px; }
+            .row-offset-h:focus, .row-offset-m:focus { color: #9aabb8; border-bottom-color: rgba(255,255,255,0.1); }
+            .row-offset-h::-webkit-inner-spin-button,
+            .row-offset-m::-webkit-inner-spin-button,
+            .row-offset-h::-webkit-outer-spin-button,
+            .row-offset-m::-webkit-outer-spin-button { -webkit-appearance: none; }
+            .row.is-alarm .row-offset-h,
+            .row.is-alarm .row-offset-m { color: #4aaa7a; }
+            .row-remove-btn {
+              width: 15px; height: 15px; border-radius: 50%;
+              border: 1px solid #3a3a58; background: transparent;
+              color: #4b5563; font-size: 9px; line-height: 1;
+              display: flex; align-items: center; justify-content: center;
+              flex-shrink: 0; margin-left: 5px;
+              opacity: 0;
+              transition: border-color 0.15s, color 0.15s, background 0.15s, opacity 0.12s;
+            }
+            .row:hover .row-remove-btn { opacity: 1; }
+            .row.is-selected .row-remove-btn { opacity: 1; }
+            .row.is-selected {
+              background: hsla(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) + 30%), 0.06);
+            }
+            .row-remove-btn:hover { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.08); }
+            .rows-separator {
+              height: 1px;
+              background: hsl(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) - 12%));
+              margin: 2px 28px;
+            }
+            /* Middle section: label-only indent, no wrapper needed */
+            .rows-middle-content { }
+            .rows-middle-content .row-label-input { margin-left: 14px; }
+            /* Centered add button */
+            .row-add-wrap {
+              display: flex; justify-content: center; padding: 4px 0 10px;
+            }
+            .row-add-btn {
+              width: 20px; height: 20px; border-radius: 50%;
+              border: 1px solid hsl(calc(var(--tbh) - 1), calc(var(--tbs) + 17%), calc(var(--tbl) + 51%));
+              background: transparent;
+              color: hsl(calc(var(--tbh) - 1), calc(var(--tbs) + 17%), calc(var(--tbl) + 51%));
+              font-size: 14px; line-height: 1;
+              display: flex; align-items: center; justify-content: center;
+              transition: background 0.15s, border-color 0.15s, color 0.15s;
+            }
+            .row-add-btn:hover {
+              background: hsl(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) - 20%));
+              border-color: hsl(calc(var(--tbh) - 6), calc(var(--tbs) + 65%), calc(var(--tbl) + 63%));
+              color: hsl(calc(var(--tbh) - 6), calc(var(--tbs) + 65%), calc(var(--tbl) + 63%));
+            }
+            .row.is-last { }
             .row-time {
               font-family: 'Nunito', sans-serif;
               font-size: 18px; font-weight: 600;
@@ -559,16 +874,15 @@
 
             /* ── Clock-in section ── */
             .clock-in-section {
-              padding: 17px 28px;
+              padding: 14px 28px 16px;
               border-bottom: 1px solid hsl(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) - 12%));
-              display: flex; align-items: center;
-              justify-content: space-between; gap: 12px;
+              display: flex; flex-direction: column; align-items: center; gap: 7px;
             }
             .clock-in-label {
               font-family: 'DM Mono', monospace;
               font-size: 12px; font-weight: 600;
               letter-spacing: 0.13em; text-transform: uppercase;
-              color: #9ca3af;
+              color: #9ca3af; text-align: center;
             }
             .custom-time-wrap {
               background: hsl(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) - 20%));
@@ -612,27 +926,35 @@
               </button>
             </div>
             <div className="card-header">
-              <h1 className="title">Pre-shift<br/>Timeline</h1>
+              <textarea
+                className="title"
+                value={titleText}
+                rows="1"
+                spellCheck={false}
+                ref={el => resizeTitleLabel(el)}
+                onChange={e => { setTitleText(e.target.value); resizeTitleLabel(e.target); }}
+              />
             </div>
 
-            {/* Clock-in input — moved between title and sleep box */}
+            {/* Clock-in input */}
             <div className="clock-in-section">
-              <div className="clock-in-label">Clock-In Time</div>
               <CustomTimeInput
                 value={clockIn}
                 displayValue={displayClockIn}
                 showShine={showShine}
                 onChange={handleClockInChange}
               />
+              <div className="clock-in-label">Event Time</div>
             </div>
 
-            {/* Capture zone: sleep banner + rows */}
+            {/* Capture zone: title (screenshot only) + sleep banner + rows */}
             <div id="capture-zone">
+            <div className="title-screenshot" />
             {/* Sleep banner */}
             <div style={{padding:"16px 0 0"}}>
               <div
                 className="sleep-banner"
-                style={{ background: bannerBg, border: `1px solid ${cfg.border}` }}
+                style={{ background: bannerBg }}
               >
                 {/* Title row */}
                 <div className="sleep-top">
@@ -695,24 +1017,129 @@
 
             {/* Timeline rows */}
             <div className="rows">
-              {milestones.map((ms) => {
-                const { h, m, period } = to12(ms.time);
-                const isClockIn = ms.offsetMin === 0;
-                const isAlarm   = ms.offsetMin === -100;
-                let cls = "row";
-                if (isClockIn) cls += " is-clockin";
-                if (isAlarm)   cls += " is-alarm";
+
+              {/* Fixed first row */}
+              {(() => {
+                const row = rows[0];
+                const { h, m, period } = to12(addMinutes(clockIn, row.offsetMin));
+                const sel = selectedRowId === row.id;
                 return (
-                  <div key={ms.label} className={cls}>
+                  <div key={row.id}
+                    className={`row is-alarm${sel ? ' is-selected' : ''}`}
+                    onClick={e => handleRowTap(e, row.id)}>
                     <div className="row-dot" />
-                    <div className="row-label">{ms.label}</div>
-                    <div className="row-offset">{fmtOffset(ms.offsetMin) ?? ""}</div>
-                    <div className="row-time">
-                      {h}:{m}<span className="period">{period}</span>
+                    <textarea className="row-label-input" value={row.label} rows="1"
+                      spellCheck={focusedLabelId === row.id}
+                      ref={el => resizeLabel(el)}
+                      onFocus={() => setFocusedLabelId(row.id)}
+                      onBlur={() => setFocusedLabelId(null)}
+                      onChange={e => { updateLabel(row.id, e.target.value); resizeLabel(e.target); }} />
+                    <div className="row-offset-wrap">
+                      <span className="row-offset-pfx">−</span>
+                      <div className="offset-spinner">
+                        <button className="row-chevron" {...chevronEvents(() => stepOffsetH(row.id, 1))}>
+                          <svg width="7" height="5" viewBox="0 0 7 5" fill="none"><path d="M1 4L3.5 1.5L6 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
+                        <input type="number" className="row-offset-h" min="0" max="23" step="1"
+                          value={getH(row.offsetMin)} onChange={e => updateOffsetH(row.id, e.target.value)} />
+                        <button className="row-chevron" {...chevronEvents(() => stepOffsetH(row.id, -1))}>
+                          <svg width="7" height="5" viewBox="0 0 7 5" fill="none"><path d="M1 1L3.5 3.5L6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
+                      </div>
+                      <span className="row-offset-pfx">h</span>
+                      <div className="offset-spinner offset-spinner-m">
+                        <button className="row-chevron" {...chevronEvents(() => stepOffsetM(row.id, 1))}>
+                          <svg width="7" height="5" viewBox="0 0 7 5" fill="none"><path d="M1 4L3.5 1.5L6 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
+                        <input type="number" className="row-offset-m" min="0" max="59" step="1"
+                          value={getM(row.offsetMin)} onChange={e => updateOffsetM(row.id, e.target.value)} />
+                        <button className="row-chevron" {...chevronEvents(() => stepOffsetM(row.id, -1))}>
+                          <svg width="7" height="5" viewBox="0 0 7 5" fill="none"><path d="M1 1L3.5 3.5L6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
+                      </div>
+                      <span className="row-offset-pfx">m</span>
                     </div>
+                    <div className="row-time">{h}:{m}<span className="period">{period}</span></div>
                   </div>
                 );
-              })}
+              })()}
+
+              <div className="rows-separator" />
+
+              {/* Middle removable rows */}
+              <div className="rows-middle-content">
+                {rows.slice(1, -1).map(row => {
+                    const { h, m, period } = to12(addMinutes(clockIn, row.offsetMin));
+                    const sel = selectedRowId === row.id;
+                    return (
+                      <div key={row.id}
+                        className={`row${sel ? ' is-selected' : ''}`}
+                        onClick={e => handleRowTap(e, row.id)}>
+                        <div className="row-dot" />
+                        <textarea className="row-label-input" value={row.label} rows="1"
+                          spellCheck={focusedLabelId === row.id}
+                          ref={el => resizeLabel(el)}
+                          onFocus={() => setFocusedLabelId(row.id)}
+                          onBlur={() => setFocusedLabelId(null)}
+                          onChange={e => { updateLabel(row.id, e.target.value); resizeLabel(e.target); }} />
+                        <div className="row-offset-wrap">
+                          <span className="row-offset-pfx">−</span>
+                          <div className="offset-spinner">
+                            <button className="row-chevron" {...chevronEvents(() => stepOffsetH(row.id, 1))}>
+                              <svg width="7" height="5" viewBox="0 0 7 5" fill="none"><path d="M1 4L3.5 1.5L6 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </button>
+                            <input type="number" className="row-offset-h" min="0" max="23" step="1"
+                              value={getH(row.offsetMin)} onChange={e => updateOffsetH(row.id, e.target.value)} />
+                            <button className="row-chevron" {...chevronEvents(() => stepOffsetH(row.id, -1))}>
+                              <svg width="7" height="5" viewBox="0 0 7 5" fill="none"><path d="M1 1L3.5 3.5L6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </button>
+                          </div>
+                          <span className="row-offset-pfx">h</span>
+                          <div className="offset-spinner offset-spinner-m">
+                            <button className="row-chevron" {...chevronEvents(() => stepOffsetM(row.id, 1))}>
+                              <svg width="7" height="5" viewBox="0 0 7 5" fill="none"><path d="M1 4L3.5 1.5L6 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </button>
+                            <input type="number" className="row-offset-m" min="0" max="59" step="1"
+                              value={getM(row.offsetMin)} onChange={e => updateOffsetM(row.id, e.target.value)} />
+                            <button className="row-chevron" {...chevronEvents(() => stepOffsetM(row.id, -1))}>
+                              <svg width="7" height="5" viewBox="0 0 7 5" fill="none"><path d="M1 1L3.5 3.5L6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </button>
+                          </div>
+                          <span className="row-offset-pfx">m</span>
+                        </div>
+                        <button className="row-remove-btn" onClick={() => removeRow(row.id)}>×</button>
+                        <div className="row-time">{h}:{m}<span className="period">{period}</span></div>
+                      </div>
+                    );
+                  })}
+              </div>{/* end middle-content */}
+
+              <div className="row-add-wrap">
+                <button className="row-add-btn" onClick={addRow}>+</button>
+              </div>
+
+              <div className="rows-separator" />
+
+              {/* Fixed last row */}
+              {(() => {
+                const row = rows[rows.length - 1];
+                const { h, m, period } = to12(addMinutes(clockIn, row.offsetMin));
+                const sel = selectedRowId === row.id;
+                return (
+                  <div key={row.id}
+                    className={`row is-alarm${sel ? ' is-selected' : ''}`}
+                    onClick={e => handleRowTap(e, row.id)}>
+                    <div className="row-dot" />
+                    <textarea className="row-label-input" value={row.label} rows="1"
+                      spellCheck={focusedLabelId === row.id}
+                      ref={el => resizeLabel(el)}
+                      onFocus={() => setFocusedLabelId(row.id)}
+                      onBlur={() => setFocusedLabelId(null)}
+                      onChange={e => { updateLabel(row.id, e.target.value); resizeLabel(e.target); }} />
+                    <div className="row-time" style={{marginLeft:'auto'}}>{h}:{m}<span className="period">{period}</span></div>
+                  </div>
+                );
+              })()}
             </div>
             </div>{/* end capture-zone */}
 
