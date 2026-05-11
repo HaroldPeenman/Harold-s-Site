@@ -171,12 +171,12 @@
     }
 
     const PALETTE = [
-      { label:'red',    bg:'#9e282b', border:'#e05658' },
-      { label:'orange', bg:'#a15726', border:'#e07c46' },
-      { label:'yellow', bg:'#a18826', border:'#d4ae38' },
-      { label:'green',  bg:'#26a153', border:'#40d878' },
-      { label:'blue',   bg:'#2434a4', border:'#5a6ce2' },
-      { label:'purple', bg:'#6826a1', border:'#9050d8' },
+      { label:'red',    bg:'#9e282b', border:'#e05658', h:358, s:60, l:39 },
+      { label:'orange', bg:'#a15726', border:'#e07c46', h:24,  s:62, l:39 },
+      { label:'yellow', bg:'#a18826', border:'#d4ae38', h:48,  s:62, l:39 },
+      { label:'green',  bg:'#26a153', border:'#40d878', h:142, s:62, l:39 },
+      { label:'blue',   bg:'#2434a4', border:'#5a6ce2', h:232, s:64, l:39 },
+      { label:'purple', bg:'#6826a1', border:'#9050d8', h:272, s:62, l:39 },
     ];
 
     function App() {
@@ -231,6 +231,13 @@
           const url = URL.createObjectURL(blob);
           window.open(url, '_blank');
         }, 'image/png');
+      };
+
+      const handleColorChange = ({ h, s, l }) => {
+        const root = document.documentElement;
+        root.style.setProperty('--tbh', h);
+        root.style.setProperty('--tbs', s + '%');
+        root.style.setProperty('--tbl', l + '%');
       };
 
       const handleClockInChange = (e) => {
@@ -702,12 +709,13 @@
 
             {/* Color palette buttons */}
             <div className="color-buttons-section">
-              {PALETTE.map(({ label, bg, border }) => (
+              {PALETTE.map(({ label, bg, border, h, s, l }) => (
                 <button
                   key={label}
                   className="color-btn"
                   title={label}
                   style={{ background: bg, borderColor: border }}
+                  onClick={() => handleColorChange({ h, s, l })}
                 />
               ))}
             </div>
