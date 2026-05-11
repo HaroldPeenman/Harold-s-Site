@@ -429,6 +429,25 @@
           return { ta, div };
         });
 
+        // Swap number inputs for spans — html2canvas misaligns input[type=number] baselines
+        const offsetInputs = Array.from(zone.querySelectorAll('.row-offset-h, .row-offset-m'));
+        const offsetSwaps = offsetInputs.map(inp => {
+          const span = document.createElement('span');
+          const cs   = window.getComputedStyle(inp);
+          span.textContent       = inp.value;
+          span.style.fontFamily  = cs.fontFamily;
+          span.style.fontSize    = cs.fontSize;
+          span.style.fontWeight  = cs.fontWeight;
+          span.style.color       = cs.color;
+          span.style.letterSpacing = cs.letterSpacing;
+          span.style.width       = cs.width;
+          span.style.textAlign   = 'center';
+          span.style.display     = 'inline-block';
+          inp.parentNode.insertBefore(span, inp);
+          inp.style.display = 'none';
+          return { inp, span };
+        });
+
         const computedBg = getComputedStyle(document.querySelector('.card')).backgroundColor;
         const canvas = await window.html2canvas(zone, {
           backgroundColor: computedBg, scale: 2, logging: false, useCORS: true,
@@ -443,6 +462,7 @@
         if (titleInput) titleInput.style.display = '';
         chevrons.forEach(c => c.style.display = '');
         labelSwaps.forEach(({ ta, div }) => { ta.style.display = ''; div.remove(); });
+        offsetSwaps.forEach(({ inp, span }) => { inp.style.display = ''; span.remove(); });
 
         canvas.toBlob(async (blob) => {
           const file = new File([blob], 'wake-up-schedule.png', { type: 'image/png' });
@@ -573,7 +593,6 @@
             }
             .card-header {
               padding: 16px 20px 18px 28px;
-              border-bottom: 1px solid hsl(var(--tbh), calc(var(--tbs) - 5%), calc(var(--tbl) - 12%));
             }
             .eyebrow {
               font-family: 'DM Mono', monospace;
